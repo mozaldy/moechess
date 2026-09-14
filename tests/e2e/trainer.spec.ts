@@ -44,8 +44,19 @@ test("learn the Berlin, reload, and review it the next day", async ({ page }) =>
 test("a saved theme is applied before the page paints", async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem("moechess:settings", JSON.stringify({ schemaVersion: 1, side: "white", sessionSize: 20, themeId: "night-shift" }));
+    // Record the theme when <body> is inserted: the <head> boot script has run, React has not.
+    const record = () => {
+      (window as unknown as { __themeAtBody?: string | null }).__themeAtBody = document.documentElement.getAttribute("data-theme");
+    };
+    new MutationObserver((_, observer) => {
+      if (document.body) {
+        record();
+        observer.disconnect();
+      }
+    }).observe(document, { childList: true, subtree: true });
   });
   await page.goto("/");
+  expect(await page.evaluate(() => (window as unknown as { __themeAtBody?: string | null }).__themeAtBody)).toBe("night-shift");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "night-shift");
   await expect(page.locator("html")).toHaveCSS("background-color", "rgb(26, 20, 51)");
 });
