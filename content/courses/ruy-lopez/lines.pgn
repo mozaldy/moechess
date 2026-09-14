@@ -1,0 +1,48 @@
+[Event "Moechess sample course"]
+[LineId "berlin"]
+[LineName "Berlin Defence"]
+[Result "*"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 {The Ruy Lopez. The bishop attacks the knight that defends e5. [%cal Gb5c6,Gc6e5]} 3... Nf6 {The Berlin Defence. Black counterattacks e4 instead of chasing the bishop. [%csl Ge4]} 4. O-O Nxe4 5. d4 Nd6 6. Bxc6 dxc6 7. dxe5 Nf5 8. Qxd8+ {The queens come off. This endgame is known as the Berlin Wall.} 8... Kxd8 9. Nc3 Ke8 10. h3 h5 *
+
+[Event "Moechess sample course"]
+[LineId "exchange"]
+[LineName "Exchange Variation"]
+[Result "*"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 {The Morphy Defence. Black asks the bishop to decide right away.} 4. Bxc6 {The Exchange Variation. White gives up the bishop pair to damage Black's pawn structure. [%cal Gb5c6]} 4... dxc6 5. O-O f6 6. d4 exd4 7. Nxd4 c5 8. Nb3 Qxd1 9. Rxd1 Bg4 10. f3 Be6 *
+
+[Event "Moechess sample course"]
+[LineId "open"]
+[LineName "Open Variation"]
+[Result "*"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 {The bishop keeps the pin on the c6 knight. [%cal Ga4e8]} 4... Nf6 5. O-O Nxe4 {The Open Variation. Black takes the e4 pawn. [%csl Ge4]} 6. d4 b5 7. Bb3 d5 8. dxe5 Be6 9. Nbd2 Nc5 10. c3 d4 *
+
+[Event "Moechess sample course"]
+[LineId "marshall"]
+[LineName "Marshall Attack"]
+[Result "*"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 {Black develops and prepares to castle. This leads to the Closed Ruy Lopez.} 6. Re1 b5 7. Bb3 O-O 8. c3 d5 {The Marshall Attack. Black gives up a pawn for fast piece play against White's king. [%cal Gd5e4]} 9. exd5 Nxd5 10. Nxe5 Nxe5 11. Rxe5 c6 12. d4 Bd6 13. Re1 Qh4 14. g3 Qh3 *
+
+[Event "Moechess sample course"]
+[LineId "chigorin"]
+[LineName "Closed, Chigorin Variation"]
+[Result "*"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 d6 8. c3 O-O 9. h3 {Stops ...Bg4, which would pin the f3 knight. [%csl Gg4]} 9... Na5 {The Chigorin Variation. The knight hits the b3 bishop and frees the c-pawn. [%cal Ga5b3]} 10. Bc2 c5 11. d4 Qc7 12. Nbd2 cxd4 13. cxd4 *
+
+[Event "Moechess sample course"]
+[LineId "breyer"]
+[LineName "Closed, Breyer Variation"]
+[Result "*"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 d6 8. c3 O-O 9. h3 Nb8 {The Breyer Variation. The knight reroutes to d7 to support e5. [%cal Gb8d7]} 10. d4 Nbd7 11. Nbd2 Bb7 12. Bc2 Re8 13. Nf1 Bf8 14. Ng3 g6 *
+
+[Event "Moechess sample course"]
+[LineId "zaitsev"]
+[LineName "Closed, Zaitsev Variation"]
+[Result "*"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 d6 8. c3 O-O 9. h3 Bb7 {The Zaitsev Variation. The bishop adds pressure to e4. [%cal Gb7e4]} 10. d4 Re8 11. Nbd2 Bf8 12. a4 h6 13. Bc2 exd4 14. cxd4 *

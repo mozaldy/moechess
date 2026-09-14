@@ -1,0 +1,20 @@
+{
+  "slug": "ruy-lopez",
+  "name": "Ruy Lopez",
+  "eco": ["C60", "C65", "C67", "C68", "C69", "C80", "C84", "C88", "C89", "C92", "C95", "C96"],
+  "mainSide": "white",
+  "credits": [
+    {
+      "label": "Opening names",
+      "author": "lichess-org/chess-openings",
+      "url": "https://github.com/lichess-org/chess-openings",
+      "license": "CC0 1.0"
+    },
+    {
+      "label": "Sample notes",
+      "author": "Moechess",
+      "license": "CC BY-SA 4.0"
+    }
+  ],
+  "contentLicense": "CC BY-SA 4.0"
+}
