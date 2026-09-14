@@ -92,6 +92,26 @@ describe("StorageBanner", () => {
     fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
     expect(screen.queryByRole("status")).toBeNull();
   });
+
+  test("a failed progress write shows the banner", async () => {
+    const store = new MemoryProgressStore();
+    store.saveCards = vi.fn().mockRejectedValue(new Error("disk full"));
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    let latest: WorkspaceContextValue | null = null;
+    render(
+      <WorkspaceProvider progressStore={store}>
+        <Probe onValue={(v) => { latest = v; }} />
+        <StorageBanner />
+      </WorkspaceProvider>,
+    );
+    await waitFor(() => expect(latest!.snapshot).toEqual(emptySnapshot()));
+
+    await act(() => latest!.commitProgress((s) => s.saveCards([])));
+
+    expect(screen.getByRole("status")).toHaveTextContent("Progress won't be saved in this browser.");
+    expect(consoleError).toHaveBeenCalledWith(expect.any(Error));
+    consoleError.mockRestore();
+  });
 });
 
 describe("Workspace", () => {

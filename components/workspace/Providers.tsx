@@ -70,7 +70,14 @@ export function WorkspaceProvider({ children, progressStore, settingsStore, now 
   }, [settings.themeId]);
 
   const commitProgress = useCallback(async (write: (store: ProgressStore) => Promise<void>) => {
-    await write(progress);
+    try {
+      await write(progress);
+    } catch (error) {
+      // Callers fire and forget; surface the failure through the storage banner instead.
+      console.error(error);
+      setStatus({ kind: "unavailable" });
+      return;
+    }
     setSnapshot(await progress.load());
     setStatus(progress.status());
   }, [progress]);
