@@ -43,4 +43,12 @@ describe("theming hook contract", () => {
     const unknown = [...referenced].filter((token) => !allowed.has(token));
     expect(unknown).toEqual([]);
   });
+
+  test("template-literal token names start with a defined token", () => {
+    const tokens = TOKEN_NAMES.map((name) => cssVar(name));
+    const prefixes = new Set([...source.matchAll(/(--mc-[a-z0-9-]*-)\$\{/g)].map((m) => m[1]));
+    expect(prefixes.size).toBeGreaterThan(0);
+    const unmatched = [...prefixes].filter((prefix) => !tokens.some((token) => token.startsWith(prefix)));
+    expect(unmatched).toEqual([]);
+  });
 });
