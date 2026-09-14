@@ -79,6 +79,16 @@ describe("ExploreView", () => {
     });
   });
 
+  test("announces the commentary of a restored position", async () => {
+    const saved = { ...emptySnapshot(), explore: { ruy: { lastNodeId: "e4 e5 Nf3 Nc6 Bb5" } } };
+    const { log } = setup(new MemoryProgressStore(saved));
+    expect(await screen.findByText("The Ruy Lopez.")).toBeInTheDocument();
+    const shown = log.filter((event) => event.type === "commentaryShown");
+    expect(shown).toEqual([
+      { type: "commentaryShown", nodeId: "e4 e5 Nf3 Nc6 Bb5", commentary: { text: "The Ruy Lopez.", source: "sample" } },
+    ]);
+  });
+
   test("the branch map moves the board", async () => {
     const { user } = setup();
     await user.click(within(screen.getByRole("navigation", { name: "Ruy Lopez lines" })).getByRole("button", { name: "3... a6" }));

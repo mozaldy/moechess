@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Board } from "@/components/board/Board";
 import { BranchMap } from "@/components/branch-map/BranchMap";
 import { Dialogue } from "@/components/dialogue/Dialogue";
@@ -40,11 +40,13 @@ export function ExploreView({ tree }: { tree: CourseTree }) {
     }),
   );
 
+  useEffect(() => {
+    if (node.comment) events.emit({ type: "commentaryShown", nodeId: node.id, commentary: node.comment });
+  }, [node, events]);
+
   function select(id: string) {
     setChosenId(id);
     setNotice(null);
-    const target = tree.nodes[id];
-    if (target.comment) events.emit({ type: "commentaryShown", nodeId: id, commentary: target.comment });
     void commitProgress((store) => store.setExplorePosition(slug, id));
   }
 
