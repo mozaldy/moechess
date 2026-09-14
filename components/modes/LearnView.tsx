@@ -27,7 +27,7 @@ export interface LearnViewProps {
 export function LearnView({ tree, lineId, opponentDelayMs = 500 }: LearnViewProps) {
   const { settings } = useWorkspace();
   const line = findLine(tree, lineId);
-  if (!line) return <p className="mc-notice">This line isn&apos;t in {tree.meta.name}. Pick a line from the course page.</p>;
+  if (!line) return <p className="mc-notice" role="alert">This line isn&apos;t in {tree.meta.name}. Pick a line from the course page.</p>;
   // Switching sides starts a fresh session for that side.
   return <LearnSession key={settings.side} tree={tree} line={line} side={settings.side} opponentDelayMs={opponentDelayMs} />;
 }
@@ -91,7 +91,8 @@ function LearnSession({ tree, line, side, opponentDelayMs }: LearnSessionProps) 
       const cards = cardsForLine(tree, line, side).map((id) => current.cards[id] ?? newCardState(specs.get(id)!, learnedAt));
       await store.saveCards(learnCards(cards, learnedAt));
       await store.markLineLearned(learnedLineKey(slug, side, line.id), learnedAt.toISOString());
-    }).then(() => {
+    }).then((ok) => {
+      if (!ok) return;
       events.emit({ type: "lineLearned", courseSlug: slug, lineId: line.id, side });
       events.emit({
         type: "sessionEnded", mode: "learn",

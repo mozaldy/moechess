@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useEffect } from "react";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { LearnView } from "@/components/modes/LearnView";
 import { WorkspaceProvider, useWorkspace } from "@/components/workspace/Providers";
 import { buildCourseTree, parsePgnFile } from "@/lib/course/build-tree";
@@ -26,8 +26,7 @@ function EventLog({ into }: { into: WorkspaceEvent[] }) {
   return null;
 }
 
-function setup(lineId = "short") {
-  const store = new MemoryProgressStore();
+function setup(lineId = "short", store = new MemoryProgressStore()) {
   const log: WorkspaceEvent[] = [];
   render(
     <WorkspaceProvider progressStore={store} settingsStore={new LocalStorageSettingsStore(null)} now={() => NOW}>
@@ -99,6 +98,21 @@ describe("LearnView", () => {
 
   test("an unknown line explains what to do", () => {
     setup("missing");
-    expect(screen.getByText("This line isn't in Ruy Lopez. Pick a line from the course page.")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("This line isn't in Ruy Lopez. Pick a line from the course page.");
+  });
+
+  test("does not announce a learned line when saving fails", async () => {
+    const store = new MemoryProgressStore();
+    store.saveCards = vi.fn().mockRejectedValue(new Error("disk full"));
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { play, log } = setup("short", store);
+    await play("e4");
+    await play("Nf3");
+    await play("e4");
+    await play("Nf3");
+
+    expect(await screen.findByText("Learned", { selector: ".mc-learn-phase" })).toBeInTheDocument();
+    expect(log).not.toContainEqual(expect.objectContaining({ type: "lineLearned" }));
+    consoleError.mockRestore();
   });
 });

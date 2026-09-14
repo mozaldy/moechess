@@ -24,7 +24,11 @@ describe("WorkspaceProvider", () => {
     );
     await waitFor(() => expect(latest!.snapshot).toEqual(emptySnapshot()));
 
-    await act(() => latest!.commitProgress((s) => s.setExplorePosition("ruy", "e4")));
+    let ok: boolean | undefined;
+    await act(async () => {
+      ok = await latest!.commitProgress((s) => s.setExplorePosition("ruy", "e4"));
+    });
+    expect(ok).toBe(true);
     expect(latest!.snapshot!.explore.ruy).toEqual({ lastNodeId: "e4" });
     expect(latest!.status).toEqual({ kind: "ok" });
   });
@@ -106,7 +110,11 @@ describe("StorageBanner", () => {
     );
     await waitFor(() => expect(latest!.snapshot).toEqual(emptySnapshot()));
 
-    await act(() => latest!.commitProgress((s) => s.saveCards([])));
+    let ok: boolean | undefined;
+    await act(async () => {
+      ok = await latest!.commitProgress((s) => s.saveCards([]));
+    });
+    expect(ok).toBe(false);
 
     expect(screen.getByRole("status")).toHaveTextContent("Progress won't be saved in this browser.");
     expect(consoleError).toHaveBeenCalledWith(expect.any(Error));

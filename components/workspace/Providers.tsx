@@ -22,7 +22,7 @@ export interface WorkspaceContextValue {
   events: EventBus;
   now: () => Date;
   // Runs a write against the progress store, then refreshes snapshot and status.
-  commitProgress: (write: (store: ProgressStore) => Promise<void>) => Promise<void>;
+  commitProgress: (write: (store: ProgressStore) => Promise<void>) => Promise<boolean>;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -76,10 +76,11 @@ export function WorkspaceProvider({ children, progressStore, settingsStore, now 
       // Callers fire and forget; surface the failure through the storage banner instead.
       console.error(error);
       setStatus({ kind: "unavailable" });
-      return;
+      return false;
     }
     setSnapshot(await progress.load());
     setStatus(progress.status());
+    return true;
   }, [progress]);
 
   const value = useMemo<WorkspaceContextValue>(() => ({
