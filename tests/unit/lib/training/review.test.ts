@@ -1,10 +1,11 @@
 import { describe, expect, test } from "vitest";
+import { applySan } from "@/lib/chess/position";
 import { buildCourseTree, parsePgnFile } from "@/lib/course/build-tree";
 import type { CourseMeta, CourseTree } from "@/lib/course/types";
 import { learnedLineKey, type CardState, type ProgressSnapshot } from "@/lib/progress/types";
 import { cardId, cardsForLine, generateCards, type CardId } from "@/lib/training/cards";
 import {
-  initReview, nextReview, pickReviewLine, remainingDue, reviewExpectedMove, reviewReducer, reviewTurn,
+  initReview, nextReview, pickReviewLine, remainingDue, reviewExpectedMove, reviewNode, reviewReducer, reviewTurn,
   type ReviewAction, type ReviewState,
 } from "@/lib/training/review";
 import { DAY_MS, gradeCard, learnCards, newCardState } from "@/lib/training/scheduler";
@@ -117,6 +118,37 @@ describe("reviewReducer", () => {
     const s = start();
     expect(run(s, { type: "play", san: "Ke2" })).toBe(s);
     expect(run(s, { type: "advance" })).toBe(s);
+  });
+
+  test("revealing the last due card still plays the answer before the line is done", () => {
+    let s = start();
+    // Grade every due card but the last, then keep advancing to the last due card's turn.
+    while (remainingDue(s).length > 1 || reviewTurn(tree, s) !== "learner") {
+      s = reviewTurn(tree, s) === "learner"
+        ? run(s, { type: "play", san: reviewExpectedMove(tree, s)! })
+        : run(s, { type: "advance" });
+    }
+    expect(reviewTurn(tree, s)).toBe("learner");
+
+    const expected = reviewExpectedMove(tree, s);
+    const wrongMoves: string[] = [];
+    for (const san of ["a3", "h3", "a6", "h6", "Kf1", "Ke7"]) {
+      if (wrongMoves.length >= 2) break;
+      if (san === expected) continue;
+      if (applySan(reviewNode(tree, s).fen, san)) wrongMoves.push(san);
+    }
+    expect(wrongMoves).toHaveLength(2);
+
+    s = run(s, { type: "play", san: wrongMoves[0] });
+    s = run(s, { type: "play", san: wrongMoves[1] });
+    expect(s.feedback?.kind).toBe("revealed");
+    expect(remainingDue(s)).toEqual([]);
+    expect(reviewTurn(tree, s)).toBe("auto");
+
+    const indexBefore = s.index;
+    s = run(s, { type: "advance" });
+    expect(reviewTurn(tree, s)).toBe("done");
+    expect(s.index).toBe(indexBefore + 1);
   });
 
   test("another course move gets a note without counting as an attempt", () => {

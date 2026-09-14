@@ -101,7 +101,10 @@ export function remainingDue(state: ReviewState): CardId[] {
 }
 
 export function reviewTurn(tree: CourseTree, state: ReviewState): ReviewTurn {
-  if (state.index >= state.path.length - 1 || remainingDue(state).length === 0) return "done";
+  if (state.index >= state.path.length - 1) return "done";
+  // A revealed answer is played before the line can finish.
+  if (state.feedback?.kind === "revealed") return "auto";
+  if (remainingDue(state).length === 0) return "done";
   const node = reviewNode(tree, state);
   if (turnOf(node.position) !== state.side) return "opponent";
   const id = cardId(state.side, node.position);
