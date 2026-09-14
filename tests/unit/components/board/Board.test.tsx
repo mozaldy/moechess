@@ -137,4 +137,12 @@ describe("Board input", () => {
     fireEvent.click(square("e4"));
     expect(screen.getByText("You played e4")).toHaveAttribute("aria-live", "polite");
   });
+
+  test("announces rejected moves to screen readers", () => {
+    setup({ onMove: vi.fn(() => false) });
+    fireEvent.click(square("e2"));
+    fireEvent.click(square("e4"));
+    expect(screen.getByText("e4 was not accepted")).toHaveAttribute("aria-live", "polite");
+    expect(screen.queryByText("You played e4")).toBeNull();
+  });
 });

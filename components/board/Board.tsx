@@ -93,8 +93,10 @@ export function Board({
       if (rejectTimer.current) clearTimeout(rejectTimer.current);
       setRejectedFen(move.fenAfter);
       rejectTimer.current = setTimeout(() => setRejectedFen(null), feedbackDuration());
+      setAnnouncement(`${move.san} was not accepted`);
+    } else {
+      setAnnouncement(`You played ${move.san}`);
     }
-    setAnnouncement(`You played ${move.san}`);
   }
 
   function tryMove(from: Square, to: Square) {
