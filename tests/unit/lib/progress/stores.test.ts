@@ -62,6 +62,26 @@ describe("LocalStorageProgressStore", () => {
     expect(JSON.parse(localStorage.getItem(PROGRESS_KEY)!).schemaVersion).toBe(1);
   });
 
+  test("two tabs writing in turn keep each other's progress", async () => {
+    const other: CardState = { ...card, id: "b:rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -", expected: ["e5"] };
+    const tabA = new LocalStorageProgressStore(localStorage, () => NOW);
+    const tabB = new LocalStorageProgressStore(localStorage, () => NOW);
+    await tabA.load();
+    await tabB.load();
+
+    await tabA.saveCards([card]);
+    await tabB.saveCards([other]);
+    await tabA.markLineLearned("ruy:white:berlin", NOW.toISOString());
+    await tabB.setExplorePosition("ruy", "e4");
+
+    const reloaded = await new LocalStorageProgressStore(localStorage, () => NOW).load();
+    expect(reloaded.cards[card.id]).toEqual(card);
+    expect(reloaded.cards[other.id]).toEqual(other);
+    expect(reloaded.learnedLines["ruy:white:berlin"]).toEqual({ learnedAt: NOW.toISOString() });
+    expect(reloaded.explore.ruy).toEqual({ lastNodeId: "e4" });
+    expect(Object.keys((await tabB.load()).cards)).toHaveLength(2);
+  });
+
   test("corrupt data is backed up and replaced, and the store reports recovery", async () => {
     localStorage.setItem(PROGRESS_KEY, "{broken");
     const store = new LocalStorageProgressStore(localStorage, () => NOW);

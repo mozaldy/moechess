@@ -1,6 +1,6 @@
 import { MemoryProgressStore } from "./memory-store";
 import type { CardState, ProgressSnapshot, ProgressStore, StoreStatus } from "./types";
-import { emptySnapshot, parseSnapshot } from "./validate";
+import { emptySnapshot, parseSnapshot, type ParseResult } from "./validate";
 
 export const PROGRESS_KEY = "moechess:progress";
 
@@ -22,18 +22,15 @@ export class LocalStorageProgressStore implements ProgressStore {
   }
 
   async saveCards(cards: CardState[]): Promise<void> {
-    await this.ensureLoaded().saveCards(cards);
-    await this.persist();
+    await this.write((store) => store.saveCards(cards));
   }
 
   async markLineLearned(key: string, learnedAt: string): Promise<void> {
-    await this.ensureLoaded().markLineLearned(key, learnedAt);
-    await this.persist();
+    await this.write((store) => store.markLineLearned(key, learnedAt));
   }
 
   async setExplorePosition(slug: string, nodeId: string): Promise<void> {
-    await this.ensureLoaded().setExplorePosition(slug, nodeId);
-    await this.persist();
+    await this.write((store) => store.setExplorePosition(slug, nodeId));
   }
 
   private ensureLoaded(): MemoryProgressStore {
@@ -73,13 +70,38 @@ export class LocalStorageProgressStore implements ProgressStore {
     return snapshot;
   }
 
-  private async persist(): Promise<void> {
+  // Read-merge-write: another tab may have saved since this one loaded, so apply
+  // this change on top of what is in storage now rather than on the in-memory copy.
+  private async write(apply: (store: MemoryProgressStore) => Promise<void>): Promise<void> {
+    this.ensureLoaded();
     const kind = this.currentStatus.kind;
-    if (!this.storage || !this.memory || kind === "newer-schema" || kind === "unavailable") return;
+    if (!this.storage || kind === "newer-schema" || kind === "unavailable") {
+      await apply(this.memory!);
+      return;
+    }
+
+    const fresh = this.readFresh();
+    if (fresh?.kind === "newer") {
+      // Another tab upgraded the schema: keep working in memory, never overwrite it.
+      this.currentStatus = { kind: "newer-schema", version: fresh.version };
+      await apply(this.memory!);
+      return;
+    }
+    // A corrupt fresh read falls back to the in-memory snapshot.
+    if (fresh?.kind === "ok") this.memory = new MemoryProgressStore(fresh.snapshot);
+    await apply(this.memory!);
     try {
-      this.storage.setItem(PROGRESS_KEY, JSON.stringify(await this.memory.load()));
+      this.storage.setItem(PROGRESS_KEY, JSON.stringify(await this.memory!.load()));
     } catch {
       this.currentStatus = { kind: "unavailable" };
+    }
+  }
+
+  private readFresh(): ParseResult | null {
+    try {
+      return parseSnapshot(this.storage!.getItem(PROGRESS_KEY));
+    } catch {
+      return null;
     }
   }
 }
