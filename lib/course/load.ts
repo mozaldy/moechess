@@ -14,6 +14,17 @@ export function listCourseSlugs(dir: string = COURSES_DIR): string[] {
     .sort();
 }
 
+// Credit urls are rendered as links on /credits, so only web urls are allowed.
+function isHttpUrl(value: unknown): boolean {
+  if (typeof value !== "string") return false;
+  try {
+    const { protocol } = new URL(value);
+    return protocol === "http:" || protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 function validateMeta(slug: string, raw: unknown): CourseMeta {
   const file = `${slug}/course.json`;
   const problems: string[] = [];
@@ -29,6 +40,13 @@ function validateMeta(slug: string, raw: unknown): CourseMeta {
   const creditsOk = Array.isArray(m.credits) && m.credits.every((c: Credit) =>
     typeof c?.label === "string" && typeof c?.license === "string");
   if (!creditsOk) problems.push(`${file}: credits must be an array of { label, license }`);
+  else {
+    for (const credit of m.credits as Credit[]) {
+      if (credit.url !== undefined && !isHttpUrl(credit.url)) {
+        problems.push(`${file}: credit "${credit.label}" url must start with http:// or https://`);
+      }
+    }
+  }
   if (typeof m.contentLicense !== "string" || m.contentLicense === "") {
     problems.push(`${file}: contentLicense is required`);
   }

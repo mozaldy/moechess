@@ -61,6 +61,26 @@ describe("metadata validation", () => {
     }
   });
 
+  test("credit urls must be http or https", () => {
+    const dir = fixture({
+      slug: "demo", name: "Demo", eco: [], mainSide: "white", contentLicense: "CC0",
+      credits: [
+        { label: "Pieces", url: "javascript:alert(1)", license: "CC BY-SA 4.0" },
+        { label: "Names", url: "https://example.com/names", license: "CC0" },
+        { label: "Notes", license: "CC BY-SA 4.0" },
+      ],
+    });
+    try {
+      loadCourse("demo", dir);
+      expect.unreachable();
+    } catch (e) {
+      expect(e).toBeInstanceOf(CourseValidationError);
+      expect((e as CourseValidationError).problems).toEqual([
+        'demo/course.json: credit "Pieces" url must start with http:// or https://',
+      ]);
+    }
+  });
+
   test("a course folder without PGN files fails", () => {
     const dir = fixture({ slug: "demo", name: "Demo", eco: [], mainSide: "white", credits: [], contentLicense: "CC0" }, "");
     expect(() => loadCourse("demo", dir)).toThrowError(/demo: no lines found/);
