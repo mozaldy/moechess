@@ -89,7 +89,8 @@ function ReviewSession({ trees, side, sessionSize, opponentDelayMs, autoDelayMs,
     const empty: Session = { review: null, gradedIds: [], stats: { graded: 0, good: 0, again: 0, mistakes: 0 } };
     return { ...empty, review: pickNext(trees, side, snapshot as ProgressSnapshot, openedAt, empty, sessionSize) };
   });
-  const [finished, setFinished] = useState(session.review === null);
+  const [nothingDueAtStart] = useState(session.review === null);
+  const [finished, setFinished] = useState(nothingDueAtStart);
   const [announcement, setAnnouncement] = useState<string | undefined>(undefined);
   const resetSaved = useRef(false);
 
@@ -179,10 +180,15 @@ function ReviewSession({ trees, side, sessionSize, opponentDelayMs, autoDelayMs,
   if (finished || !tree || !review) {
     return (
       <div className="mc-panel mc-review-summary">
-        {session.stats.graded === 0 ? (
+        {nothingDueAtStart ? (
           <>
             <h1 className="mc-panel-title">Nothing is due right now</h1>
             <p>Learn a new line, or come back when your next review is due.</p>
+          </>
+        ) : session.stats.graded === 0 ? (
+          <>
+            <h1 className="mc-panel-title">Review ended</h1>
+            <p>No positions were reviewed. Your due positions are still waiting.</p>
           </>
         ) : (
           <>

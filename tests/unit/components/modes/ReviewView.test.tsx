@@ -80,6 +80,18 @@ describe("ReviewView", () => {
     }));
   });
 
+  test("ending a review before grading anything says the due positions are still waiting", async () => {
+    const { log } = setup(learnedSnapshot());
+    expect(await screen.findByRole("heading", { name: "Short line" })).toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole("button", { name: "End review" }));
+    expect(await screen.findByRole("heading", { name: "Review ended" })).toBeInTheDocument();
+    expect(screen.getByText("No positions were reviewed. Your due positions are still waiting.")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Nothing is due right now" })).toBeNull();
+    await waitFor(() => expect(log).toContainEqual({
+      type: "sessionEnded", mode: "review", stats: { graded: 0, good: 0, again: 0, mistakes: 0 },
+    }));
+  });
+
   test("two wrong tries reveal the answer and grade the position again", async () => {
     const { play, store } = setup(learnedSnapshot());
     await play("d4");
