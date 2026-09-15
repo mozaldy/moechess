@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, test, vi } from "vitest";
 import { BranchMap } from "@/components/branch-map/BranchMap";
 import { buildCourseTree, parsePgnFile } from "@/lib/course/build-tree";
@@ -66,6 +67,44 @@ describe("BranchMap", () => {
     const stub = screen.getByRole("button", { name: "Show 2 more lines after 2. Nf3" });
     fireEvent.click(stub);
     expect(screen.getByRole("button", { name: "2... Nc6" })).toBeInTheDocument();
+  });
+
+  test("only the current station is in the tab order", () => {
+    setup();
+    const tabbable = screen.getAllByRole("button").filter((button) => button.tabIndex === 0);
+    expect(tabbable).toHaveLength(1);
+    expect(tabbable[0]).toHaveAccessibleName("2. Nf3");
+  });
+
+  test("the first station is tabbable when no station is current", () => {
+    setup({ currentNodeId: "missing" });
+    const tabbable = screen.getAllByRole("button").filter((button) => button.tabIndex === 0);
+    expect(tabbable).toHaveLength(1);
+    expect(tabbable[0]).toHaveAccessibleName("Start");
+  });
+
+  test("arrow keys move focus between stations", async () => {
+    setup();
+    const user = userEvent.setup();
+    screen.getByRole("button", { name: "2. Nf3" }).focus();
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("button", { name: "2... Nc6" })).toHaveFocus();
+    await user.keyboard("{ArrowUp}");
+    expect(screen.getByRole("button", { name: "2. Nf3" })).toHaveFocus();
+
+    // 3. Bb5 splits into two lanes; move sideways to the other branch at the same depth.
+    screen.getByRole("button", { name: "3... Nf6, due for review" }).focus();
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("button", { name: "3... a6" })).toHaveFocus();
+    await user.keyboard("{ArrowLeft}");
+    expect(screen.getByRole("button", { name: "3... Nf6, due for review" })).toHaveFocus();
+  });
+
+  test("a non-interactive map renders no station buttons", () => {
+    const { container } = setup({ interactive: false });
+    expect(screen.getByRole("navigation", { name: "Ruy Lopez lines" })).toBeInTheDocument();
+    expect(screen.queryAllByRole("button")).toHaveLength(0);
+    expect(container.querySelectorAll(".mc-station").length).toBeGreaterThan(0);
   });
 
   test("a newly learned line gets a stamp", () => {

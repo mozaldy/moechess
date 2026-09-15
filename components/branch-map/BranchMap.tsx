@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState, type KeyboardEvent } from "react";
 import { layoutBranchMap, stackLabels, type MapNode } from "@/lib/branch-map/layout";
 import { moveNumberLabel } from "@/lib/course/labels";
 import type { CourseTree } from "@/lib/course/types";
@@ -13,8 +13,11 @@ export interface BranchMapProps {
   onSelect: (nodeId: string) => void;
   stampLineId?: string | null;
   collapseDepth?: number;
+  // When false the map is decorative: stations are drawn but are not buttons.
+  interactive?: boolean;
 }
 
+const ARROW_KEYS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]);
 const LANE = 18;
 const ROW = 22;
 const PAD = 14;
@@ -26,9 +29,10 @@ function moveLabel(tree: CourseTree, node: MapNode): string {
 }
 
 export function BranchMap({
-  tree, currentNodeId, learnedLineIds, dueNodeIds, onSelect, stampLineId = null, collapseDepth,
+  tree, currentNodeId, learnedLineIds, dueNodeIds, onSelect, stampLineId = null, collapseDepth, interactive = true,
 }: BranchMapProps) {
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
+  const buttons = useRef(new Map<string, HTMLButtonElement>());
   const layout = layoutBranchMap(tree, { currentNodeId, expanded, collapseDepth });
 
   const px = (lane: number) => PAD + lane * LANE;
@@ -65,6 +69,29 @@ export function BranchMap({
     if (node.label) parts.push(node.label);
     if (dueNodeIds.has(node.nodeId)) parts.push("due for review");
     return parts.join(", ");
+  }
+
+  // Roving tabindex: one tab stop for the whole map, arrow keys move between stations.
+  const tabStopId = (layout.nodes.find((node) => node.nodeId === currentNodeId && node.kind === "move") ?? layout.nodes[0])?.id;
+
+  // Nodes are already in layout order (depth, then lane).
+  function neighbour(node: MapNode, key: string): MapNode | undefined {
+    const index = layout.nodes.findIndex((n) => n.id === node.id);
+    if (key === "ArrowUp") return layout.nodes[index - 1];
+    if (key === "ArrowDown") return layout.nodes[index + 1];
+    const side = layout.nodes.filter((n) => (key === "ArrowLeft" ? n.x < node.x : n.x > node.x));
+    if (side.length === 0) return undefined;
+    const laneX = key === "ArrowLeft" ? Math.max(...side.map((n) => n.x)) : Math.min(...side.map((n) => n.x));
+    return side
+      .filter((n) => n.x === laneX)
+      .reduce((best, n) => (Math.abs(n.y - node.y) < Math.abs(best.y - node.y) ? n : best));
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>, node: MapNode) {
+    if (!ARROW_KEYS.has(event.key)) return;
+    event.preventDefault();
+    const next = neighbour(node, event.key);
+    if (next) buttons.current.get(next.id)?.focus();
   }
 
   return (
@@ -117,15 +144,21 @@ export function BranchMap({
           ))}
         </svg>
 
-        {layout.nodes.map((node) => (
+        {interactive && layout.nodes.map((node) => (
           <button
             key={node.id}
+            ref={(element) => {
+              if (element) buttons.current.set(node.id, element);
+              else buttons.current.delete(node.id);
+            }}
             type="button"
             className="mc-branch-station-button"
             data-kind={node.kind}
             style={{ left: px(node.x), top: py(node.y) }}
+            tabIndex={node.id === tabStopId ? 0 : -1}
             aria-label={describe(node)}
             aria-current={node.nodeId === currentNodeId && node.kind === "move" ? "step" : undefined}
+            onKeyDown={(event) => handleKeyDown(event, node)}
             onClick={() => {
               if (node.kind === "collapsed") setExpanded((current) => new Set([...current, node.nodeId]));
               else onSelect(node.nodeId);

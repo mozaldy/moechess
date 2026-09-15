@@ -179,6 +179,7 @@ function LearnSession({ tree, line, side, opponentDelayMs }: LearnSessionProps) 
           learnedLineIds={learnedLineIds}
           dueNodeIds={new Set()}
           onSelect={() => {}}
+          interactive={false}
           stampLineId={state.phase === "completed" ? line.id : null}
         />
       )}

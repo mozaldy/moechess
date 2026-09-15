@@ -50,6 +50,8 @@ describe("LearnView", () => {
     expect(screen.getByText("Step 1 of 2: follow the highlighted moves")).toBeInTheDocument();
     expect(document.querySelector('.mc-arrow[data-brush="G"]')).not.toBeNull();
     expect(screen.getByText("Your move 1 of 2")).toBeInTheDocument();
+    // The map is decorative while learning: no station buttons in the tab order.
+    expect(document.querySelector(".mc-branch-station-button")).toBeNull();
   });
 
   test("a wrong move is explained and must be corrected", async () => {
