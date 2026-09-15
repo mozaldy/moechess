@@ -60,6 +60,7 @@ Set on `<html>` as CSS custom properties. The active theme id is on
 | `.mc-topbar-nav` | Main navigation |
 | `.mc-side-toggle` | White / Black switch |
 | `.mc-main` | Main content area |
+| `.mc-footer` | Site footer with the credits and licenses link |
 | `.mc-storage-banner` | Storage warning. `[data-kind="unavailable\|recovered\|newer-schema"]` |
 | `.mc-sr-only` | Visually hidden text |
 | `.mc-muted` | Secondary text |

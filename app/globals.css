@@ -236,6 +236,19 @@ input[type="checkbox"] {
   padding-block: 1.5rem 3rem;
 }
 
+.mc-footer {
+  max-width: 88rem;
+  margin-inline: auto;
+  padding-inline: clamp(1rem, 3vw, 2rem);
+  padding-block: 1rem 2rem;
+  border-top: var(--mc-border-width) solid var(--mc-outline);
+  color: var(--mc-ink-muted);
+}
+
+.mc-footer a {
+  color: var(--mc-ink-muted);
+}
+
 .mc-storage-banner {
   display: flex;
   flex-wrap: wrap;

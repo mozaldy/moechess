@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { CSSProperties } from "react";
 import { Atkinson_Hyperlegible_Next, Dela_Gothic_One } from "next/font/google";
+import Link from "next/link";
 import { TopBar } from "@/components/nav/TopBar";
 import { StorageBanner } from "@/components/workspace/StorageBanner";
 import { WorkspaceProvider } from "@/components/workspace/Providers";
@@ -43,6 +44,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <main id="main" className="mc-main">
             {children}
           </main>
+          <footer className="mc-footer">
+            <Link href="/credits">Credits and licenses</Link>
+          </footer>
         </WorkspaceProvider>
       </body>
     </html>

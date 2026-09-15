@@ -56,6 +56,7 @@ test("a saved theme is applied before the page paints", async ({ page }) => {
     }).observe(document, { childList: true, subtree: true });
   });
   await page.goto("/");
+  await expect(page.getByRole("contentinfo").getByRole("link", { name: "Credits and licenses" })).toHaveAttribute("href", "/credits");
   expect(await page.evaluate(() => (window as unknown as { __themeAtBody?: string | null }).__themeAtBody)).toBe("night-shift");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "night-shift");
   await expect(page.locator("html")).toHaveCSS("background-color", "rgb(26, 20, 51)");
