@@ -31,7 +31,7 @@ function setup(lineId = "short", store = new MemoryProgressStore()) {
   render(
     <WorkspaceProvider progressStore={store} settingsStore={new LocalStorageSettingsStore(null)} now={() => NOW}>
       <EventLog into={log} />
-      <LearnView tree={tree} lineId={lineId} opponentDelayMs={0} />
+      <LearnView tree={tree} trees={[tree]} lineId={lineId} opponentDelayMs={0} />
     </WorkspaceProvider>,
   );
   const user = userEvent.setup();
@@ -102,7 +102,7 @@ describe("LearnView", () => {
     localStorage.setItem("moechess:settings", JSON.stringify({ schemaVersion: 1, side: "black" }));
     render(
       <WorkspaceProvider progressStore={new MemoryProgressStore()} settingsStore={new LocalStorageSettingsStore(localStorage)} now={() => NOW}>
-        <LearnView tree={tree} lineId="short" opponentDelayMs={0} />
+        <LearnView tree={tree} trees={[tree]} lineId="short" opponentDelayMs={0} />
       </WorkspaceProvider>,
     );
     expect(await screen.findByText("White played e4")).toHaveAttribute("aria-live", "polite");

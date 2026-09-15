@@ -9,13 +9,13 @@ import { Workspace } from "@/components/workspace/Workspace";
 import { applySan, turnOf, type AppliedMove, type Side } from "@/lib/chess/position";
 import type { Arrow, CourseTree } from "@/lib/course/types";
 import type { SessionStats } from "@/lib/events/bus";
-import { reconcileCards } from "@/lib/progress/reconcile";
-import type { CardState, ProgressSnapshot } from "@/lib/progress/types";
-import { generateCards, type CardId } from "@/lib/training/cards";
+import type { ProgressSnapshot } from "@/lib/progress/types";
+import type { CardId } from "@/lib/training/cards";
+import { reconcileProgressCards } from "@/lib/training/reconcile-cards";
 import {
   nextReview, reviewExpectedMove, reviewNode, reviewReducer, reviewTurn, type ReviewState,
 } from "@/lib/training/review";
-import { gradeCard, newCardState } from "@/lib/training/scheduler";
+import { gradeCard } from "@/lib/training/scheduler";
 
 const SIDE_NAMES: Record<Side, string> = { white: "White", black: "Black" };
 
@@ -58,17 +58,8 @@ interface Session {
   stats: SessionStats;
 }
 
-// Cards for positions that left the course are filtered out; cards whose
-// course moves changed come back as new (and are saved as such).
-function reviewableCards(trees: CourseTree[], side: Side, snapshot: ProgressSnapshot, now: Date) {
-  const specs = generateCards(trees, side);
-  const prefix = side === "white" ? "w:" : "b:";
-  const ownSide = Object.fromEntries(Object.entries(snapshot.cards).filter(([id]) => id.startsWith(prefix))) as Record<CardId, CardState>;
-  return reconcileCards(ownSide, specs, (spec) => newCardState(spec, now));
-}
-
 function pickNext(trees: CourseTree[], side: Side, snapshot: ProgressSnapshot, now: Date, session: Session, size: number) {
-  const { cards } = reviewableCards(trees, side, snapshot, now);
+  const { cards } = reconcileProgressCards(trees, side, snapshot.cards, now);
   for (const id of session.gradedIds) delete cards[id];
   return nextReview(trees, { ...snapshot, cards }, side, now, session.stats.graded, size);
 }
@@ -101,8 +92,10 @@ function ReviewSession({ trees, side, sessionSize, opponentDelayMs, autoDelayMs,
   useEffect(() => {
     if (resetSaved.current || !snapshot) return;
     resetSaved.current = true;
-    const { reset, cards } = reviewableCards(trees, side, snapshot, openedAt);
-    if (reset.length > 0) void commitProgress((store) => store.saveCards(reset.map((id) => cards[id])));
+    // Positions that left every course are skipped; changed cards are saved once.
+    const { reset, updated, cards } = reconcileProgressCards(trees, side, snapshot.cards, openedAt);
+    const changed = [...reset, ...updated];
+    if (changed.length > 0) void commitProgress((store) => store.saveCards(changed.map((id) => cards[id])));
   }, [snapshot, trees, side, openedAt, commitProgress]);
 
   useEffect(() => {
@@ -165,7 +158,7 @@ function ReviewSession({ trees, side, sessionSize, opponentDelayMs, autoDelayMs,
     }
     if (gradedNow) {
       const reviewedAt = now();
-      const { cards } = reviewableCards(trees, side, snapshot, reviewedAt);
+      const { cards } = reconcileProgressCards(trees, side, snapshot.cards, reviewedAt);
       const card = cards[gradedNow.cardId];
       if (card) void commitProgress((store) => store.saveCards([gradeCard(card, gradedNow.rating, reviewedAt)]));
       events.emit({ type: "cardReviewed", cardId: gradedNow.cardId, rating: gradedNow.rating });

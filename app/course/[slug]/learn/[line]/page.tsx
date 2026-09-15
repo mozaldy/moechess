@@ -22,5 +22,5 @@ export default async function LearnPage(props: PageProps<"/course/[slug]/learn/[
   const { slug, line } = await props.params;
   const course = loadCourse(slug);
   if (!course || !findLine(course, line)) notFound();
-  return <LearnView tree={course} lineId={line} />;
+  return <LearnView tree={course} trees={loadAllCourses()} lineId={line} />;
 }

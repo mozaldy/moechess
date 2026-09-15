@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useEffect } from "react";
 import { describe, expect, test } from "vitest";
+import { LearnView } from "@/components/modes/LearnView";
 import { ReviewView } from "@/components/modes/ReviewView";
 import { WorkspaceProvider, useWorkspace } from "@/components/workspace/Providers";
 import { buildCourseTree, parsePgnFile } from "@/lib/course/build-tree";
@@ -90,6 +91,47 @@ describe("ReviewView", () => {
     await waitFor(() => expect(log).toContainEqual({
       type: "sessionEnded", mode: "review", stats: { graded: 0, good: 0, again: 0, mistakes: 0 },
     }));
+  });
+
+  test("a position shared with another course stays learned from learn to review", async () => {
+    const italian = buildCourseTree({ ...meta, slug: "italian", name: "Italian" }, parsePgnFile("italian/lines.pgn", `[LineId "main"]
+[LineName "Italian main"]
+
+1. e4 e5 2. Bc4 Nf6 *
+`));
+    const trees = [tree, italian];
+    const sharedId = cardsForLine(tree, tree.lines[0], "white")[1];
+    const store = new MemoryProgressStore();
+    const user = userEvent.setup();
+    const play = async (san: string) => {
+      const input = await screen.findByRole("textbox", { name: "Type a move" });
+      await waitFor(() => expect(input).toBeEnabled());
+      await user.clear(input);
+      await user.type(input, `${san}{Enter}`);
+    };
+
+    const learn = render(
+      <WorkspaceProvider progressStore={store} settingsStore={new LocalStorageSettingsStore(null)} now={() => LEARNED_AT}>
+        <LearnView tree={tree} trees={trees} lineId="short" opponentDelayMs={0} />
+      </WorkspaceProvider>,
+    );
+    for (const san of ["e4", "Nf3", "e4", "Nf3"]) await play(san);
+    await waitFor(async () => expect((await store.load()).learnedLines["ruy:white:short"]).toBeDefined());
+    learn.unmount();
+
+    render(
+      <WorkspaceProvider progressStore={store} settingsStore={new LocalStorageSettingsStore(null)} now={() => NOW}>
+        <ReviewView trees={trees} opponentDelayMs={0} autoDelayMs={0} />
+      </WorkspaceProvider>,
+    );
+    expect(await screen.findByRole("heading", { name: "Short line" })).toBeInTheDocument();
+    await play("e4");
+    await play("Nf3");
+    expect(await screen.findByText("2 remembered, 0 to practise again.")).toBeInTheDocument();
+
+    const shared = (await store.load()).cards[sharedId];
+    expect(shared.status).toBe("review");
+    expect(shared.expected).toEqual(["Nf3", "Bc4"]);
   });
 
   test("two wrong tries reveal the answer and grade the position again", async () => {

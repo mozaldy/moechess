@@ -79,4 +79,25 @@ describe("CourseList", () => {
     expect(screen.getByRole("link", { name: "Explore lines" })).toHaveAttribute("href", "/course/ruy");
     expect(screen.getByRole("link", { name: "Review 2 due" })).toHaveAttribute("href", "/review");
   });
+
+  test("counts due reviews only for learned lines, after merging positions shared between courses", async () => {
+    const italian = buildCourseTree({ ...meta, slug: "italian", name: "Italian" }, parsePgnFile("italian/lines.pgn", `[LineId "main"]
+[LineName "Main"]
+
+1. e4 e5 2. Bc4 *
+`));
+    const learnedAt = new Date(NOW.getTime() - DAY_MS);
+    // Saved by an older build from the Ruy Lopez alone: the shared position after 1. e4 e5 expects only Nf3.
+    const specs = generateCards([tree], "white");
+    const snapshot = emptySnapshot();
+    for (const card of learnCards(cardsForLine(tree, tree.lines[0], "white").map((id) => newCardState(specs.get(id)!, learnedAt)), learnedAt)) {
+      snapshot.cards[card.id] = card;
+    }
+    snapshot.learnedLines[learnedLineKey("ruy", "white", "a")] = { learnedAt: learnedAt.toISOString() };
+
+    withProvider(<CourseList courses={[tree, italian]} />, new MemoryProgressStore(snapshot));
+    expect(await screen.findByText("1 of 2 lines learned as white, 2 due for review")).toBeInTheDocument();
+    expect(screen.getByText("0 of 1 lines learned as white")).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: /^Review \d+ due$/ })).toHaveLength(1);
+  });
 });

@@ -317,7 +317,7 @@ This is the contract future customization depends on. It's cheap now and expensi
 | Older schema | Migrations run on load |
 | Newer schema (from a future app version) | Kept read-only; app works in memory and never overwrites it |
 | Course update removes a position | Card silently dropped from review |
-| Course update changes expected moves | Card reset to `new` |
+| Course update changes a card's main move or removes an accepted move | Card reset to `new` (moves added by another course are merged and keep the schedule) |
 | Missing skin asset | Fall back to the default skin per piece or square |
 | Unknown theme ID | Fall back to Summer Sky |
 

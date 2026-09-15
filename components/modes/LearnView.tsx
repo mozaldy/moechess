@@ -16,26 +16,30 @@ import { cardsForLine, generateCards } from "@/lib/training/cards";
 import {
   currentNode, expectedMove, initLearn, learnReducer, learnTurn, type LearnAction, type LearnState,
 } from "@/lib/training/learn";
+import { reconcileProgressCards } from "@/lib/training/reconcile-cards";
 import { learnCards, newCardState } from "@/lib/training/scheduler";
 
 const SIDE_NAMES: Record<Side, string> = { white: "White", black: "Black" };
 
 export interface LearnViewProps {
   tree: CourseTree;
+  // Every course, including `tree`: cards for shared positions merge their moves.
+  trees: CourseTree[];
   lineId: string;
   opponentDelayMs?: number;
 }
 
-export function LearnView({ tree, lineId, opponentDelayMs = 500 }: LearnViewProps) {
+export function LearnView({ tree, trees, lineId, opponentDelayMs = 500 }: LearnViewProps) {
   const { settings } = useWorkspace();
   const line = findLine(tree, lineId);
   if (!line) return <p className="mc-notice" role="alert">This line isn&apos;t in {tree.meta.name}. Pick a line from the course page.</p>;
   // Switching sides starts a fresh session for that side.
-  return <LearnSession key={settings.side} tree={tree} line={line} side={settings.side} opponentDelayMs={opponentDelayMs} />;
+  return <LearnSession key={settings.side} tree={tree} trees={trees} line={line} side={settings.side} opponentDelayMs={opponentDelayMs} />;
 }
 
 interface LearnSessionProps {
   tree: CourseTree;
+  trees: CourseTree[];
   line: Line;
   side: Side;
   opponentDelayMs: number;
@@ -56,7 +60,7 @@ function coachText(tree: CourseTree, state: LearnState): string | null {
   return currentNode(tree, state).comment?.text ?? null;
 }
 
-function LearnSession({ tree, line, side, opponentDelayMs }: LearnSessionProps) {
+function LearnSession({ tree, trees, line, side, opponentDelayMs }: LearnSessionProps) {
   const { snapshot, events, now, commitProgress } = useWorkspace();
   const [state, setState] = useState(() => initLearn(tree, line, side));
   const [announcement, setAnnouncement] = useState<string | undefined>(undefined);
@@ -90,11 +94,15 @@ function LearnSession({ tree, line, side, opponentDelayMs }: LearnSessionProps) 
     if (state.phase !== "completed" || saved.current) return;
     saved.current = true;
     const learnedAt = now();
-    const specs = generateCards([tree], side);
+    // Cards cover every course, so a position shared with another course stores the merged moves.
+    const specs = generateCards(trees, side);
     void commitProgress(async (store) => {
       const current = await store.load();
-      const cards = cardsForLine(tree, line, side).map((id) => current.cards[id] ?? newCardState(specs.get(id)!, learnedAt));
-      await store.saveCards(learnCards(cards, learnedAt));
+      const { cards: reconciled, reset, updated } = reconcileProgressCards(trees, side, current.cards, learnedAt);
+      const lineIds = cardsForLine(tree, line, side);
+      const learned = learnCards(lineIds.map((id) => reconciled[id] ?? newCardState(specs.get(id)!, learnedAt)), learnedAt);
+      const otherChanges = [...reset, ...updated].filter((id) => !lineIds.includes(id)).map((id) => reconciled[id]);
+      await store.saveCards([...otherChanges, ...learned]);
       await store.markLineLearned(learnedLineKey(slug, side, line.id), learnedAt.toISOString());
     }).then((ok) => {
       if (!ok) return;
@@ -104,7 +112,7 @@ function LearnSession({ tree, line, side, opponentDelayMs }: LearnSessionProps) 
         stats: { graded: 0, good: 0, again: 0, mistakes: mistakes.current },
       });
     });
-  }, [state.phase, tree, line, side, slug, now, commitProgress, events]);
+  }, [state.phase, tree, trees, line, side, slug, now, commitProgress, events]);
 
   function handleMove(move: AppliedMove): boolean {
     const before = state;
