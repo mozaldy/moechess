@@ -873,7 +873,11 @@ input[type="checkbox"] {
   .mc-branch,
   .mc-button,
   .mc-panel button,
-  .mc-panel a {
+  .mc-panel a,
+  .mc-dialogue-skip,
+  .mc-move-input button,
+  .mc-storage-banner button,
+  .mc-workspace-map-toggle {
     transition: none;
   }
 

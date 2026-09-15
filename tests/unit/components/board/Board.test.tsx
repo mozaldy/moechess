@@ -41,6 +41,17 @@ describe("Board rendering", () => {
     expect(container.querySelector('.mc-highlight[data-brush="R"]')).not.toBeNull();
     expect(container.querySelector('.mc-feedback[data-state="mistake"]')).not.toBeNull();
   });
+
+  test("two brushes on one square render without duplicate keys", () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const { container } = setup({ highlights: [{ square: "e5", brush: "R" }, { square: "e5", brush: "G" }] });
+      expect(container.querySelectorAll('.mc-highlight')).toHaveLength(2);
+      expect(consoleError.mock.calls.flat().join(" ")).not.toMatch(/same key/);
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
 });
 
 describe("Board input", () => {

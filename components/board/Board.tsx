@@ -214,7 +214,7 @@ export function Board({
             const { x, y } = squareXY(square, orientation);
             return (
               <rect
-                key={`hl-${square}`}
+                key={`hl-${square}-${brush}`}
                 className="mc-highlight"
                 data-brush={brush}
                 x={x}
