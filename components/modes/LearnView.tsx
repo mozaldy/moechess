@@ -7,7 +7,7 @@ import { BranchMap } from "@/components/branch-map/BranchMap";
 import { Dialogue } from "@/components/dialogue/Dialogue";
 import { useWorkspace } from "@/components/workspace/Providers";
 import { Workspace } from "@/components/workspace/Workspace";
-import { applySan, type AppliedMove, type Side } from "@/lib/chess/position";
+import { applySan, turnOf, type AppliedMove, type Side } from "@/lib/chess/position";
 import { commentarySourceLabel } from "@/lib/course/labels";
 import { findLine } from "@/lib/course/queries";
 import type { Arrow, CourseTree, Line } from "@/lib/course/types";
@@ -17,6 +17,8 @@ import {
   currentNode, expectedMove, initLearn, learnReducer, learnTurn, type LearnAction, type LearnState,
 } from "@/lib/training/learn";
 import { learnCards, newCardState } from "@/lib/training/scheduler";
+
+const SIDE_NAMES: Record<Side, string> = { white: "White", black: "Black" };
 
 export interface LearnViewProps {
   tree: CourseTree;
@@ -57,6 +59,7 @@ function coachText(tree: CourseTree, state: LearnState): string | null {
 function LearnSession({ tree, line, side, opponentDelayMs }: LearnSessionProps) {
   const { snapshot, events, now, commitProgress } = useWorkspace();
   const [state, setState] = useState(() => initLearn(tree, line, side));
+  const [announcement, setAnnouncement] = useState<string | undefined>(undefined);
   const mistakes = useRef(0);
   const saved = useRef(false);
 
@@ -75,7 +78,9 @@ function LearnSession({ tree, line, side, opponentDelayMs }: LearnSessionProps) 
     if (turn !== "opponent") return;
     const timer = setTimeout(() => {
       const nextId = state.path[state.index + 1];
-      events.emit({ type: "moveMade", san: tree.nodes[nextId].san as string, by: "opponent", nodeId: nextId });
+      const san = tree.nodes[nextId].san as string;
+      events.emit({ type: "moveMade", san, by: "opponent", nodeId: nextId });
+      setAnnouncement(`${SIDE_NAMES[turnOf(currentNode(tree, state).position)]} played ${san}`);
       setState((current) => learnReducer(tree, current, { type: "opponentMoved" }));
     }, opponentDelayMs);
     return () => clearTimeout(timer);
@@ -188,6 +193,7 @@ function LearnSession({ tree, line, side, opponentDelayMs }: LearnSessionProps) 
           arrows={arrows}
           highlights={node.highlights}
           feedback={feedback}
+          announcement={announcement}
         />
       )}
       dialogue={(

@@ -96,6 +96,16 @@ describe("LearnView", () => {
     expect(screen.getByText("Your move 1 of 2")).toBeInTheDocument();
   });
 
+  test("announces the opponent's move when learning as black", async () => {
+    localStorage.setItem("moechess:settings", JSON.stringify({ schemaVersion: 1, side: "black" }));
+    render(
+      <WorkspaceProvider progressStore={new MemoryProgressStore()} settingsStore={new LocalStorageSettingsStore(localStorage)} now={() => NOW}>
+        <LearnView tree={tree} lineId="short" opponentDelayMs={0} />
+      </WorkspaceProvider>,
+    );
+    expect(await screen.findByText("White played e4")).toHaveAttribute("aria-live", "polite");
+  });
+
   test("an unknown line explains what to do", () => {
     setup("missing");
     expect(screen.getByRole("alert")).toHaveTextContent("This line isn't in Ruy Lopez. Pick a line from the course page.");

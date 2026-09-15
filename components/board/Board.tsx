@@ -29,6 +29,8 @@ export interface BoardProps {
   highlights?: Highlight[];
   feedback?: BoardFeedback | null;
   pieceSet?: PieceSet;
+  // A move played for the learner (opponent or auto-played), e.g. "White played Nf3".
+  announcement?: string;
 }
 
 const PIECE_NAMES: Record<string, string> = {
@@ -53,7 +55,7 @@ function describePiece(code: PieceCode | undefined): string {
 
 export function Board({
   fen, orientation, interactive, label, onMove,
-  lastMove = null, arrows = [], highlights = [], feedback = null, pieceSet,
+  lastMove = null, arrows = [], highlights = [], feedback = null, pieceSet, announcement,
 }: BoardProps) {
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
   const set = pieceSet ?? getPieceSet(null);
@@ -61,7 +63,10 @@ export function Board({
   const [selection, setSelection] = useState<{ fen: string; square: Square } | null>(null);
   const [cursor, setCursor] = useState<Square>(orientation === "white" ? "e2" : "e7");
   const [rejectedFen, setRejectedFen] = useState<string | null>(null);
-  const [announcement, setAnnouncement] = useState("");
+  // The live region shows whichever came last: a move submitted here or a new announcement prop.
+  const [spoken, setSpoken] = useState({ from: announcement, text: announcement ?? "" });
+  if (spoken.from !== announcement) setSpoken({ from: announcement, text: announcement ?? spoken.text });
+  const setAnnouncement = (text: string) => setSpoken({ from: announcement, text });
   const [typed, setTyped] = useState("");
   const [typedError, setTypedError] = useState<string | null>(null);
 
@@ -330,7 +335,7 @@ export function Board({
         {typedError && <p id={`${uid}-move-error`} className="mc-move-error" role="alert">{typedError}</p>}
       </form>
 
-      <p className="mc-sr-only" aria-live="polite">{announcement}</p>
+      <p className="mc-sr-only" aria-live="polite">{spoken.text}</p>
     </div>
   );
 }

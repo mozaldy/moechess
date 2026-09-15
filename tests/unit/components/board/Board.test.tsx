@@ -149,6 +149,16 @@ describe("Board input", () => {
     expect(screen.getByText("You played e4")).toHaveAttribute("aria-live", "polite");
   });
 
+  test("announces moves played for the learner through the announcement prop", () => {
+    const { rerender } = setup();
+    fireEvent.click(square("e2"));
+    fireEvent.click(square("e4"));
+    expect(screen.getByText("You played e4")).toHaveAttribute("aria-live", "polite");
+    rerender(<Board fen={START_FEN} orientation="white" interactive label="Training board" announcement="Black played e5" />);
+    expect(screen.getByText("Black played e5")).toHaveAttribute("aria-live", "polite");
+    expect(screen.queryByText("You played e4")).toBeNull();
+  });
+
   test("announces rejected moves to screen readers", () => {
     setup({ onMove: vi.fn(() => false) });
     fireEvent.click(square("e2"));

@@ -6,7 +6,7 @@ import { Board, type BoardFeedback } from "@/components/board/Board";
 import { Dialogue } from "@/components/dialogue/Dialogue";
 import { useWorkspace } from "@/components/workspace/Providers";
 import { Workspace } from "@/components/workspace/Workspace";
-import { applySan, type AppliedMove, type Side } from "@/lib/chess/position";
+import { applySan, turnOf, type AppliedMove, type Side } from "@/lib/chess/position";
 import type { Arrow, CourseTree } from "@/lib/course/types";
 import type { SessionStats } from "@/lib/events/bus";
 import { reconcileCards } from "@/lib/progress/reconcile";
@@ -16,6 +16,8 @@ import {
   nextReview, reviewExpectedMove, reviewNode, reviewReducer, reviewTurn, type ReviewState,
 } from "@/lib/training/review";
 import { gradeCard, newCardState } from "@/lib/training/scheduler";
+
+const SIDE_NAMES: Record<Side, string> = { white: "White", black: "Black" };
 
 export interface ReviewViewProps {
   trees: CourseTree[];
@@ -88,6 +90,7 @@ function ReviewSession({ trees, side, sessionSize, opponentDelayMs, autoDelayMs,
     return { ...empty, review: pickNext(trees, side, snapshot as ProgressSnapshot, openedAt, empty, sessionSize) };
   });
   const [finished, setFinished] = useState(session.review === null);
+  const [announcement, setAnnouncement] = useState<string | undefined>(undefined);
   const resetSaved = useRef(false);
 
   const review = session.review;
@@ -115,10 +118,12 @@ function ReviewSession({ trees, side, sessionSize, opponentDelayMs, autoDelayMs,
       const delay = review.feedback?.kind === "revealed" ? revealDelayMs : turn === "opponent" ? opponentDelayMs : autoDelayMs;
       const timer = setTimeout(() => {
         const nextId = review.path[review.index + 1];
+        const san = tree.nodes[nextId].san as string;
         events.emit({
-          type: "moveMade", san: tree.nodes[nextId].san as string,
+          type: "moveMade", san,
           by: turn === "opponent" ? "opponent" : "learner", nodeId: nextId,
         });
+        setAnnouncement(`${SIDE_NAMES[turnOf(reviewNode(tree, review).position)]} played ${san}`);
         setSession((current) => current.review
           ? { ...current, review: reviewReducer(tree, current.review, { type: "advance" }) }
           : current);
@@ -236,6 +241,7 @@ function ReviewSession({ trees, side, sessionSize, opponentDelayMs, autoDelayMs,
           lastMove={lastMove ? { from: lastMove.from, to: lastMove.to } : null}
           arrows={arrows}
           feedback={feedback}
+          announcement={announcement}
         />
       )}
       dialogue={<Dialogue speaker="Course" text={coachText(tree, review)} />}
