@@ -1,7 +1,7 @@
 # Chess.com game assessment and study priorities
 
 Date: 2026-09-20
-Status: Conversational design approved; written specification awaiting user review
+Status: Written specification approved by the user on 2026-09-20
 Workflow: Superpowers brainstorming, architectural path
 
 ## 1. Intent and success criteria
