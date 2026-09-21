@@ -26,7 +26,8 @@ build identity used by analysis caches.
 
 - the matching `stockfish-19-lite-single.js` worker and
   `stockfish-19-lite-single.wasm` companion;
-- the GPLv3 license and upstream release notice;
+- the GPLv3 license copied byte-for-byte from the fixed source archive and the
+  upstream release notice;
 - a source archive fixed to the package's exact `gitHead`;
 - the hash-addressed lite NNUE network needed by the build; and
 - `BUILDING.txt`, with the exact variant command and required Emscripten version.
@@ -57,6 +58,8 @@ node scripts/vendor-stockfish.mjs --check
 ```
 
 The check reads each staged file and compares its URL, length, and SHA-256 digest with
-the manifest. See the staged `BUILDING.txt` for the reproducible-build procedure. The
-manifest hashes describe the upstream release binaries; compiler environment details
-beyond the pinned Emscripten version can cause a local rebuild to differ byte-for-byte.
+the manifest. It also extracts `Copying.txt` from the staged fixed-revision source
+archive and requires its SHA-256 digest to match the distributed license exactly. See
+the staged `BUILDING.txt` for the reproducible-build procedure. The manifest hashes
+describe the upstream release binaries; compiler environment details beyond the pinned
+Emscripten version can cause a local rebuild to differ byte-for-byte.

@@ -34,6 +34,9 @@ function workerDouble() {
         listener(new ErrorEvent("error", { message }));
       }
     },
+    messageListeners() {
+      return [...(listeners.get("message") ?? [])];
+    },
   };
 }
 
@@ -278,6 +281,7 @@ describe("browser engine lifecycle", () => {
     await Promise.resolve();
     first.emit("readyok");
     await init;
+    const staleListeners = first.messageListeners();
 
     const controller = new AbortController();
     const analysis = engine.analyze({
@@ -288,8 +292,6 @@ describe("browser engine lifecycle", () => {
     const rejection = expect(analysis).rejects.toMatchObject({ code: "aborted" });
     controller.abort();
     await rejection;
-    first.emit("info depth 1 nodes 1 score cp 99 pv e2e4");
-    first.emit("bestmove e2e4");
     await vi.advanceTimersByTimeAsync(1000);
 
     const reinit = engine.init(new AbortController().signal);
@@ -298,6 +300,22 @@ describe("browser engine lifecycle", () => {
     second.emit("readyok");
     await reinit;
     expect(first.terminate).toHaveBeenCalledOnce();
+
+    const { analysis: secondAnalysis } = await startSearch(engine, second);
+    for (const line of [
+      "info depth 1 nodes 1 score cp 99 pv e2e4",
+      "bestmove e2e4",
+    ]) {
+      for (const listener of staleListeners) {
+        listener(new MessageEvent("message", { data: line }));
+      }
+    }
+    second.emit("info depth 8 nodes 200000 score cp 12 pv g1f3 b8c6");
+    second.emit("bestmove g1f3");
+    await expect(secondAnalysis).resolves.toMatchObject({
+      score: { kind: "cp", value: 12, perspective: "white" },
+      pv: ["g1f3", "b8c6"],
+    });
     engine.dispose();
   });
 

@@ -56,20 +56,50 @@ async function releaseAssets() {
   return [scripts[0], wasm[0]];
 }
 
+function archiveFile(tarBytes, wantedName) {
+  const matches = [];
+  for (let offset = 0; offset + 512 <= tarBytes.byteLength;) {
+    const header = tarBytes.subarray(offset, offset + 512);
+    if (header.every((byte) => byte === 0)) break;
+    const text = (start, end) => header.subarray(start, end).toString("utf8").replace(/\0.*$/, "");
+    const name = text(0, 100);
+    const prefix = text(345, 500);
+    const path = prefix ? `${prefix}/${name}` : name;
+    const sizeText = text(124, 136).trim();
+    const size = Number.parseInt(sizeText, 8);
+    if (!Number.isSafeInteger(size) || size < 0) {
+      throw new Error(`Source archive has an invalid tar size for ${path || "an unnamed entry"}`);
+    }
+    const contentStart = offset + 512;
+    const contentEnd = contentStart + size;
+    if (contentEnd > tarBytes.byteLength) throw new Error(`Source archive entry is truncated: ${path}`);
+    if (path === wantedName || path.endsWith(`/${wantedName}`)) {
+      matches.push(Buffer.from(tarBytes.subarray(contentStart, contentEnd)));
+    }
+    offset = contentStart + Math.ceil(size / 512) * 512;
+  }
+  if (matches.length !== 1) {
+    throw new Error(`Source archive must contain exactly one ${wantedName}`);
+  }
+  return matches[0];
+}
+
 function validateSourceArchive(sourcePath, bytes) {
   if (!basename(sourcePath).includes(SOURCE_REVISION)) {
     throw new Error(`Source archive filename must identify revision ${SOURCE_REVISION}`);
   }
-  let listing;
+  let tarBytes;
   try {
-    listing = gunzipSync(bytes).toString("latin1");
+    tarBytes = gunzipSync(bytes);
   } catch (cause) {
     throw new Error("Source archive is not a readable gzip archive", { cause });
   }
+  const listing = tarBytes.toString("latin1");
   const required = ["/build.js", "/Copying.txt", "/AUTHORS", "/scripts/net.sh", "/src/evaluate.h"];
   if (!listing.includes(SOURCE_REVISION) || required.some((entry) => !listing.includes(entry))) {
     throw new Error("Source archive does not contain the verified revision and build material");
   }
+  return { licenseBytes: archiveFile(tarBytes, "Copying.txt") };
 }
 
 async function hashEntry(name, url) {
@@ -81,8 +111,11 @@ async function vendor(sourcePath) {
   await packageMetadata();
   const [workerFile, wasmFile] = await releaseAssets();
   const sourceBytes = await readFile(sourcePath);
-  const licenseText = (await readFile("node_modules/stockfish/Copying.txt", "utf8")).replace(/\r\n/g, "\n");
-  validateSourceArchive(sourcePath, sourceBytes);
+  const { licenseBytes } = validateSourceArchive(sourcePath, sourceBytes);
+  const packageLicenseBytes = await readFile("node_modules/stockfish/Copying.txt");
+  if (digest(packageLicenseBytes) !== digest(licenseBytes)) {
+    throw new Error("Package license does not match Copying.txt in the fixed source archive");
+  }
 
   const networkPath = join(dirname(sourcePath), NETWORK_FILE);
   const networkBytes = await readFile(networkPath);
@@ -98,7 +131,7 @@ async function vendor(sourcePath) {
   await Promise.all([
     copyFile(join("node_modules/stockfish/bin", workerFile), join(OUTPUT_DIR, workerFile)),
     copyFile(join("node_modules/stockfish/bin", wasmFile), join(OUTPUT_DIR, wasmFile)),
-    writeFile(join(OUTPUT_DIR, licenseFile), licenseText),
+    writeFile(join(OUTPUT_DIR, licenseFile), licenseBytes),
     copyFile("node_modules/stockfish/README.md", join(OUTPUT_DIR, noticeFile)),
     copyFile(sourcePath, join(OUTPUT_DIR, sourceFile)),
     copyFile(networkPath, join(OUTPUT_DIR, NETWORK_FILE)),
@@ -153,6 +186,13 @@ async function check() {
   }
   if (manifest.workerUrl !== manifest.assets.worker.url || manifest.wasmUrl !== manifest.assets.wasm.url) {
     throw new Error("Stockfish companion URLs do not match the hashed asset entries");
+  }
+  const sourcePath = join(OUTPUT_DIR, manifest.assets.source.file);
+  const sourceBytes = await readFile(sourcePath);
+  const { licenseBytes: sourceLicenseBytes } = validateSourceArchive(sourcePath, sourceBytes);
+  const stagedLicenseBytes = await readFile(join(OUTPUT_DIR, manifest.assets.license.file));
+  if (digest(stagedLicenseBytes) !== digest(sourceLicenseBytes)) {
+    throw new Error("Staged license bytes do not match Copying.txt in the fixed source archive");
   }
 }
 
