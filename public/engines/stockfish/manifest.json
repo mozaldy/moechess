@@ -1,0 +1,58 @@
+{
+  "release": "19.0.0",
+  "sourceRevision": "54fde71d90c7c403964f6cacef48f7bbec495df1",
+  "buildId": "stockfish.js-19.0.0-lite-single-57ac2d72312a",
+  "workerUrl": "/engines/stockfish/stockfish-19-lite-single.js",
+  "wasmUrl": "/engines/stockfish/stockfish-19-lite-single.wasm",
+  "licenseUrl": "/engines/stockfish/COPYING-GPL-3.0.txt",
+  "noticeUrl": "/engines/stockfish/NOTICE.txt",
+  "sourceUrl": "/engines/stockfish/stockfish.js-19.0.0-source-54fde71d90c7c403964f6cacef48f7bbec495df1.tar.gz",
+  "networkUrl": "/engines/stockfish/nn-61e7af4bb97d.nnue",
+  "buildInstructionsUrl": "/engines/stockfish/BUILDING.txt",
+  "upstreamReleaseUrl": "https://github.com/nmrugg/stockfish.js/releases/tag/v19.0.0",
+  "upstreamSourceUrl": "https://github.com/nmrugg/stockfish.js/archive/54fde71d90c7c403964f6cacef48f7bbec495df1.tar.gz",
+  "assets": {
+    "worker": {
+      "file": "stockfish-19-lite-single.js",
+      "url": "/engines/stockfish/stockfish-19-lite-single.js",
+      "sha256": "d3344124ab067fb0b90ee77873bb8e9fbf5fc01bc525fe714b0f942581e889e6",
+      "bytes": 21415
+    },
+    "wasm": {
+      "file": "stockfish-19-lite-single.wasm",
+      "url": "/engines/stockfish/stockfish-19-lite-single.wasm",
+      "sha256": "57ac2d72312aba346760e3f173f687a8c211208e97a87268436f7f0e10bb5387",
+      "bytes": 1787571
+    },
+    "license": {
+      "file": "COPYING-GPL-3.0.txt",
+      "url": "/engines/stockfish/COPYING-GPL-3.0.txt",
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+      "bytes": 35147
+    },
+    "notice": {
+      "file": "NOTICE.txt",
+      "url": "/engines/stockfish/NOTICE.txt",
+      "sha256": "06dd16ff7cd369c38e96f00dc8462245832083facac574ce663b612ea73cd625",
+      "bytes": 5576
+    },
+    "source": {
+      "file": "stockfish.js-19.0.0-source-54fde71d90c7c403964f6cacef48f7bbec495df1.tar.gz",
+      "url": "/engines/stockfish/stockfish.js-19.0.0-source-54fde71d90c7c403964f6cacef48f7bbec495df1.tar.gz",
+      "sha256": "ff4955eb2b2c6e49152dee875b28794be58cf52a8f019bcb230251207dbdce09",
+      "bytes": 632604
+    },
+    "network": {
+      "file": "nn-61e7af4bb97d.nnue",
+      "url": "/engines/stockfish/nn-61e7af4bb97d.nnue",
+      "sha256": "61e7af4bb97d51eeeb25d322916f86513b5cd3a827ce189c98c6e31946f99e5b",
+      "bytes": 1166381
+    },
+    "buildInstructions": {
+      "file": "BUILDING.txt",
+      "url": "/engines/stockfish/BUILDING.txt",
+      "sha256": "20ee145f119e1029a4acd09059d9db302bc550e197ae18660a7af61b34cd7868",
+      "bytes": 797
+    }
+  }
+}

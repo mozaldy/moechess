@@ -43,6 +43,17 @@ export default function CreditsPage() {
         ))}
         {Object.values(PIECE_SETS).map((set) => <CreditItem key={set.id} credit={set.credit} />)}
         {FONT_CREDITS.map((credit) => <CreditItem key={credit.label} credit={credit} />)}
+        <li className="mc-panel">
+          <h2 className="mc-panel-heading">Stockfish.js 19 lite single-threaded engine</h2>
+          <p>Stockfish.js contributors and the Stockfish developers. License: GNU GPL version 3.</p>
+          <p>
+            <a href="https://github.com/nmrugg/stockfish.js/releases/tag/v19.0.0">View engine release</a>
+            {" · "}
+            <a href="/engines/stockfish/stockfish.js-19.0.0-source-54fde71d90c7c403964f6cacef48f7bbec495df1.tar.gz">
+              Download corresponding source
+            </a>
+          </p>
+        </li>
       </ul>
     </>
   );

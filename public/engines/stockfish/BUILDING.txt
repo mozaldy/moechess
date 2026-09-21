@@ -1,0 +1,18 @@
+Reproducing the Stockfish.js 19 lite single-threaded engine
+
+Source revision: 54fde71d90c7c403964f6cacef48f7bbec495df1
+Required Emscripten version: 3.1.7
+Required NNUE input: nn-61e7af4bb97d.nnue
+
+1. Extract the corresponding source archive in this directory.
+2. Copy nn-61e7af4bb97d.nnue into the extracted source tree's src directory.
+3. Install and activate Emscripten 3.1.7 so emcc is on PATH.
+4. From the extracted source root run:
+
+   node build.js --single-threaded --lite -f
+
+The expected outputs are bin/stockfish-19-lite-single.js and
+bin/stockfish-19-lite-single.wasm. Compare their SHA-256 hashes with
+manifest.json. The distributed binaries are the verified v19.0.0 release
+assets; rebuilds can differ if the remaining compiler/toolchain environment
+differs from the release builder.

@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Pinned upstream browser-engine distribution; verified by the vendoring script.
+    "public/engines/**",
   ]),
 ]);
 
