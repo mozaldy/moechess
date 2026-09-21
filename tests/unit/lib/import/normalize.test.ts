@@ -11,12 +11,22 @@ const completedDraw = {
   black: { username: "learner", rating: 920, result: "agreed" },
 };
 
+const decisiveStalemate = '[White "learner"]\n[Black "opponent"]\n[Result "1-0"]\n\n1. e3 a5 2. Qh5 Ra6 3. Qxa5 h5 4. Qxc7 Rah6 5. h4 f6 6. Qxd7+ Kf7 7. Qxb7 Qd3 8. Qxb8 Qh7 9. Qxc8 Kg6 10. Qe6 1-0';
+
+const decisiveInsufficientMaterial = '[White "learner"]\n[Black "opponent"]\n[Result "1-0"]\n\n1. c3 g5 2. g3 a5 3. f4 gxf4 4. gxf4 c5 5. e3 Nc6 6. Qb3 Nh6 7. Qxb7 Bxb7 8. Bc4 Qb8 9. Ne2 Nb4 10. cxb4 cxb4 11. Bxf7+ Nxf7 12. Ng3 Bxh1 13. Nxh1 Qxf4 14. exf4 b3 15. axb3 Rb8 16. Rxa5 Rxb3 17. d3 Rxd3 18. f5 Rb3 19. Ra7 Rxb2 20. Rc7 Rxb1 21. Rxd7 Kxd7 22. Kf2 Rxc1 23. f6 exf6 24. h4 Rxh1 25. Kg2 Rxh4 26. Kg3 Kc6 27. Kxh4 Bd6 28. Kh3 f5 29. Kg2 Bc7 30. Kf3 Nd8 31. Kf2 Bg3+ 32. Kxg3 Rg8+ 33. Kh4 Kb5 34. Kh5 Nc6 35. Kh6 Rg4 36. Kxh7 Na7 37. Kh8 Rg3 38. Kh7 Rb3 39. Kg6 Kc6 40. Kxf5 Nb5 41. Kf4 Rb4+ 42. Kg5 Rf4 43. Kxf4 1-0';
+
 describe("normalizeUsername", () => {
   test("trims and case-folds a public Chess.com username", () => {
     expect(normalizeUsername("  Learner  ")).toBe("learner");
+    expect(normalizeUsername("  Player-One_2  ")).toBe("player-one_2");
   });
 
-  test.each(["", "   ", "bad/name", "bad\\name", "https://chess.com/member/me", "www.chess.com", "bad\u0000name"])(
+  test.each([
+    "", "   ", "ab", "12345", "-player", "player_",
+    "bad/name", "bad\\name", "https://chess.com/member/me", "www.chess.com",
+    "chess.com", "127.0.0.1", "learner?next=evil", "learner#fragment",
+    "bad\u0000name", "bad\u0085name", "bad\u200bname", "bad\u202ename",
+  ])(
     "rejects unsafe username %j",
     (input) => expect(() => normalizeUsername(input)).toThrow(),
   );
@@ -50,6 +60,29 @@ describe("normalizeGame", () => {
     const result = await normalizeGame(rawGame(completedDraw), "learner");
     expect(result).toMatchObject({ kind: "game", game: { side: "black" } });
   });
+
+  test.each([
+    ["stalemate", decisiveStalemate],
+    ["insufficient material", decisiveInsufficientMaterial],
+  ])("rejects a decisive result on a board-terminal %s", async (_label, pgn) => {
+    await expect(normalizeGame(rawGame({
+      pgn,
+      white: { username: "learner", rating: 900, result: "win" },
+      black: { username: "opponent", rating: 950, result: "resigned" },
+    }), "learner")).resolves.toEqual({ kind: "skip", reason: "invalid" });
+  });
+
+  test.each(["resigned", "timeout"])(
+    "accepts a decisive %s result before a board-terminal state",
+    async (result) => {
+      const pgn = '[White "learner"]\n[Black "opponent"]\n[Result "1-0"]\n\n1. e4 e5 2. Nf3 Nc6 1-0';
+      await expect(normalizeGame(rawGame({
+        pgn,
+        white: { username: "learner", rating: 900, result: "win" },
+        black: { username: "opponent", rating: 950, result },
+      }), "learner")).resolves.toMatchObject({ kind: "game" });
+    },
+  );
 
   test.each([
     ["unrated", { rated: false }],

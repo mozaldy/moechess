@@ -88,10 +88,13 @@ function resultsAgree(result: string, white: string, black: string): boolean {
 }
 
 function completionMatchesBoard(chess: Chess, result: string, white: string, black: string): boolean {
-  if (!chess.isCheckmate()) return white !== "checkmated" && black !== "checkmated";
-  if (result === "1-0") return black === "checkmated";
-  if (result === "0-1") return white === "checkmated";
-  return false;
+  if (chess.isCheckmate()) {
+    if (result === "1-0") return black === "checkmated";
+    if (result === "0-1") return white === "checkmated";
+    return false;
+  }
+  if (chess.isDraw()) return result === "1/2-1/2";
+  return white !== "checkmated" && black !== "checkmated";
 }
 
 function parseClock(value: unknown): number | null {
@@ -158,12 +161,9 @@ async function sha256(value: string): Promise<string> {
 export function normalizeUsername(input: string): string {
   const normalized = input.trim().toLowerCase();
   if (
-    normalized === ""
-    || CONTROL_RE.test(normalized)
-    || normalized.includes("/")
-    || normalized.includes("\\")
-    || normalized.startsWith("www.")
-    || /^[a-z][a-z\d+.-]*:/i.test(normalized)
+    normalized.length < 3
+    || !/^[a-z0-9][a-z0-9_-]*[a-z0-9]$/.test(normalized)
+    || !/[a-z]/.test(normalized)
   ) {
     throw new TypeError("Invalid Chess.com username");
   }
