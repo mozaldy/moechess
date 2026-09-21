@@ -182,7 +182,7 @@ class BrowserEngine implements AnalysisEngine {
       const active = this.activeSearch;
       if (!active || active.generation !== generation) return;
       const info = parseInfo(event.data, active.rootSide, active.perspective);
-      if (info) active.latest = info;
+      if (info?.bound === "exact" && info.pv.length > 0) active.latest = info;
       if (!event.data.startsWith("bestmove ")) return;
 
       const bestMove = event.data.trim().split(/\s+/)[1];

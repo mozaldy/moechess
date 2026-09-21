@@ -171,6 +171,27 @@ describe("browser engine lifecycle", () => {
     engine.dispose();
   });
 
+  test("keeps a usable exact result when the final node-limit update is a bound", async () => {
+    const { engine, fake } = await initializedEngine();
+    const { analysis } = await startSearch(engine, fake);
+
+    fake.emit("info depth 16 nodes 176511 score cp -68 pv g1f3 b8c6");
+    fake.emit(
+      "info depth 17 nodes 200251 score cp -65 lowerbound pv g1f3 b8c6",
+    );
+    fake.emit("bestmove g1f3 ponder b8c6");
+
+    await expect(analysis).resolves.toEqual({
+      score: { kind: "cp", value: -68, perspective: "white" },
+      bound: "exact",
+      pv: ["g1f3", "b8c6"],
+      nodes: 176511,
+      depth: 16,
+    });
+
+    engine.dispose();
+  });
+
   test("adds validated constrained root moves to the go command", async () => {
     const { engine, fake } = await initializedEngine();
     const analysis = engine.analyze({
