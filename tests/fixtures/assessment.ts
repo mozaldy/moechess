@@ -1,4 +1,10 @@
-import type { ImportedGame } from "@/lib/assessment/types";
+import { analysisSignature } from "@/lib/assessment/policy";
+import type {
+  Assessment,
+  GameAnalysis,
+  ImportedGame,
+  PlayerSnapshot,
+} from "@/lib/assessment/types";
 import { START_FEN } from "@/lib/chess/position";
 
 export function rawGame(overrides: Record<string, unknown> = {}) {
@@ -37,5 +43,51 @@ export function fixtureGame(overrides: Partial<ImportedGame> = {}): ImportedGame
     timeControl: "600",
     clocks: {},
     ...overrides,
+  };
+}
+
+const FIXTURE_DATE = "2026-09-20T12:00:00.000Z";
+
+export function fixtureSnapshot(game = fixtureGame()): PlayerSnapshot {
+  const current: Assessment = {
+    id: `assessment-${game.playerKey}`,
+    playerKey: game.playerKey,
+    signature: analysisSignature("fixture-engine"),
+    selectedIds: [game.id],
+    state: "ready",
+    coverage: "complete",
+    cursor: {
+      months: ["2026/09"],
+      nextMonth: 1,
+      seenIds: [game.id],
+      windowStart: "2025-10-01T00:00:00.000Z",
+      windowEnd: "2026-09-30T23:59:59.999Z",
+      invalid: 0,
+      ineligible: 0,
+    },
+    completedIds: [],
+    createdAt: FIXTURE_DATE,
+    updatedAt: FIXTURE_DATE,
+  };
+
+  return {
+    player: { key: game.playerKey, displayName: game.playerKey },
+    current,
+    draft: null,
+    games: [game],
+    analyses: [],
+  };
+}
+
+export function fixtureAnalysis(game = fixtureGame()): GameAnalysis {
+  return {
+    playerKey: game.playerKey,
+    gameId: game.id,
+    fingerprint: game.fingerprint,
+    signature: analysisSignature("fixture-engine"),
+    findings: [],
+    exclusions: {},
+    openings: [],
+    completedAt: FIXTURE_DATE,
   };
 }
