@@ -24,7 +24,7 @@ export const TACTICAL_FIXTURES: TacticalFixture[] = [
   },
   {
     name: "missed hanging queen",
-    initialFen: "q5k1/8/8/8/8/8/8/R5K1 w - - 0 1",
+    initialFen: "q7/1ppppppp/6k1/8/8/8/1PPPPPP1/R5K1 w - - 0 1",
     moves: [],
     played: "g1h2",
     theme: "hanging",
@@ -34,7 +34,7 @@ export const TACTICAL_FIXTURES: TacticalFixture[] = [
   },
   {
     name: "allowed hanging queen",
-    initialFen: "r5k1/8/8/8/8/8/8/1Q4K1 w - - 0 1",
+    initialFen: "r5k1/1ppppppp/8/8/8/8/1PPPPPKP/1Q6 w - - 0 1",
     moves: [],
     played: "b1a1",
     theme: "hanging",
@@ -44,7 +44,7 @@ export const TACTICAL_FIXTURES: TacticalFixture[] = [
   },
   {
     name: "missed knight fork",
-    initialFen: "8/4k3/1q6/8/8/2N5/8/4K3 w - - 0 1",
+    initialFen: "8/ppp1kppp/1q6/8/8/2N5/PPPPPPPP/4K3 w - - 0 1",
     moves: [],
     played: "c3b1",
     theme: "fork",
@@ -124,9 +124,9 @@ export const TACTICAL_FIXTURES: TacticalFixture[] = [
   },
   {
     name: "promotion capture wins a hanging queen",
-    initialFen: "1q5k/P7/8/8/8/8/8/7K w - - 0 1",
+    initialFen: "1q6/P1pppppp/6k1/8/8/8/1PPPPPP1/6K1 w - - 0 1",
     moves: [],
-    played: "h1g1",
+    played: "g1h2",
     theme: "hanging",
     direction: "missed",
     expected: "verified",
@@ -227,3 +227,26 @@ export const TACTICAL_FIXTURES: TacticalFixture[] = [
 export const tacticalFixtures = TACTICAL_FIXTURES;
 export const VERIFIED_TACTICAL_FIXTURES = TACTICAL_FIXTURES.filter(({ expected }) => expected === "verified");
 export const REJECTED_TACTICAL_FIXTURES = TACTICAL_FIXTURES.filter(({ expected }) => expected === "rejected");
+
+export const TACTICAL_TACTICS: Record<string, string> = {
+  "missed mate in one": "g6g7",
+  "allowed mate in one": "d8h4",
+  "missed hanging queen": "a1a8",
+  "allowed hanging queen": "a8a1",
+  "missed knight fork": "c3d5",
+  "allowed knight fork": "c6d4",
+  "black missed mate in one": "b3b2",
+  "black allowed mate in one": "e1a5",
+  "black missed hanging queen": "h8h1",
+  "black allowed hanging queen": "h1h8",
+  "black missed knight fork": "f6e4",
+  "black allowed knight fork": "f3e5",
+  "promotion capture wins a hanging queen": "a7b8q",
+  "promotion creates a knight fork": "d7d8n",
+  "en passant creates a pawn fork": "e5d6",
+  "capturing attacker is recaptured": "a1a8",
+  "hanging capture permits immediate mate": "b2b8",
+  "allowed loss was unavoidable before the move": "a8a1",
+  "played move retains another forced mate": "g6g7",
+  "forking knight is immediately recaptured": "c3d5",
+};

@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { Chess } from "chess.js";
+import { bundleBrowserEntry } from "./helpers/assessment-bundle";
 
 const MATE_FEN = "7k/8/5KQ1/8/8/8/8/8 w - - 0 1";
 
@@ -69,6 +70,93 @@ test("vendored Stockfish handshakes and finds a legal mate in one", async ({ pag
     })).not.toThrow();
   }
   expect(position.isCheckmate()).toBe(true);
+});
+
+test("real Stockfish verifies the tactical corpus conservatively", async ({ page }) => {
+  test.setTimeout(240_000);
+  const bundle = await bundleBrowserEntry(`
+    import { createBrowserEngine } from "@/lib/analysis/engine/browser-engine";
+    import { findCandidates, replayHistory } from "@/lib/analysis/tactics/candidates";
+    import { verifyCandidate } from "@/lib/analysis/tactics/verify";
+    import { TACTICAL_FIXTURES, TACTICAL_TACTICS } from "@/tests/fixtures/tactics";
+
+    const legal = (fen, line) => {
+      try {
+        replayHistory({ initialFen: fen, moves: line });
+        return true;
+      } catch { return false; }
+    };
+
+    window.runTacticalCorpus = async () => {
+      const signal = new AbortController().signal;
+      const engine = createBrowserEngine();
+      await engine.init(signal);
+      const selectedPositiveNames = new Set([
+        "missed mate in one", "allowed mate in one", "missed hanging queen",
+        "allowed hanging queen", "missed knight fork", "allowed knight fork",
+        "black allowed knight fork", "promotion capture wins a hanging queen",
+      ]);
+      const fixtures = TACTICAL_FIXTURES.filter(fixture =>
+        selectedPositiveNames.has(fixture.name) || fixture.expected === "rejected");
+      const results = [];
+      try {
+        for (const fixture of fixtures) {
+          const history = { initialFen: fixture.initialFen, moves: fixture.moves };
+          const side = replayHistory(history).turn() === "w" ? "white" : "black";
+          const candidate = findCandidates(history, fixture.played, side).find(item =>
+            item.theme === fixture.theme && item.direction === fixture.direction
+              && item.tactic === TACTICAL_TACTICS[fixture.name]);
+          if (!candidate) {
+            results.push({ name: fixture.name, expected: fixture.expected, kind: "missing", legal: false });
+            continue;
+          }
+          const outcome = await verifyCandidate(candidate, engine, signal);
+          const linesLegal = outcome.kind !== "verified" || (
+            legal(outcome.finding.beforeFen, outcome.finding.playedLine)
+            && legal(outcome.finding.beforeFen, outcome.finding.recommendedLine)
+          );
+          results.push({ name: fixture.name, expected: fixture.expected, kind: outcome.kind, legal: linesLegal,
+            theme: candidate.theme, direction: candidate.direction,
+            reason: outcome.kind === "verified" ? null : outcome.reason });
+        }
+      } finally { engine.dispose(); }
+      return results;
+    };
+  `);
+
+  await page.goto("/");
+  await page.addScriptTag({ content: bundle });
+  const results = await page.evaluate(async () => await (
+    window as unknown as { runTacticalCorpus: () => Promise<Array<{
+      name: string; expected: string; kind: string; legal: boolean; theme?: string; direction?: string; reason?: string | null;
+    }>> }
+  ).runTacticalCorpus());
+
+  const positives = results.filter(({ expected }) => expected === "verified");
+  expect(positives, JSON.stringify(results, null, 2)).toHaveLength(8);
+  expect(positives.every(({ kind, legal }) => kind === "verified" && legal), JSON.stringify(results, null, 2)).toBe(true);
+  expect(positives, JSON.stringify(results, null, 2)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ theme: "mate-one", direction: "missed", kind: "verified", legal: true }),
+      expect.objectContaining({ theme: "mate-one", direction: "allowed", kind: "verified", legal: true }),
+      expect.objectContaining({ theme: "hanging", direction: "missed", kind: "verified", legal: true }),
+      expect.objectContaining({ theme: "hanging", direction: "allowed", kind: "verified", legal: true }),
+      expect.objectContaining({ theme: "fork", direction: "missed", kind: "verified", legal: true }),
+      expect.objectContaining({ theme: "fork", direction: "allowed", kind: "verified", legal: true }),
+      expect.objectContaining({ name: "black allowed knight fork", kind: "verified", legal: true }),
+      expect.objectContaining({ name: "promotion capture wins a hanging queen", kind: "verified", legal: true }),
+    ]));
+  expect(results.filter(({ expected, kind }) => expected === "rejected" && kind === "verified"), JSON.stringify(results, null, 2)).toEqual([]);
+  const consequenceSensitive = new Set([
+    "capturing attacker is recaptured",
+    "hanging capture permits immediate mate",
+    "allowed loss was unavoidable before the move",
+    "played move retains another forced mate",
+    "forking knight is immediately recaptured",
+    "en passant creates a pawn fork",
+  ]);
+  expect(results.filter(({ name }) => consequenceSensitive.has(name)), JSON.stringify(results, null, 2))
+    .toEqual(expect.arrayContaining([...consequenceSensitive].map((name) =>
+      expect.objectContaining({ name, expected: "rejected", kind: "rejected" }))));
 });
 
 test("public game import is readable from this origin @live", async ({ page }) => {
