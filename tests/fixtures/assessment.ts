@@ -1,6 +1,7 @@
 import { analysisSignature } from "@/lib/assessment/policy";
 import type {
   Assessment,
+  Finding,
   GameAnalysis,
   ImportedGame,
   PlayerSnapshot,
@@ -89,5 +90,59 @@ export function fixtureAnalysis(game = fixtureGame()): GameAnalysis {
     exclusions: {},
     openings: [],
     completedAt: FIXTURE_DATE,
+  };
+}
+
+export function fixtureFinding(overrides: Partial<Finding> = {}): Finding {
+  const first = {
+    best: {
+      score: { kind: "cp" as const, value: 25, perspective: "white" as const },
+      bound: "exact" as const,
+      pv: ["g2g3"],
+      nodes: 200_000,
+      depth: 12,
+    },
+    played: {
+      score: { kind: "mate" as const, value: -1, perspective: "white" as const },
+      bound: "exact" as const,
+      pv: ["g2g4", "d8h4"],
+      nodes: 200_000,
+      depth: 12,
+    },
+    tactic: {
+      score: { kind: "mate" as const, value: -1, perspective: "white" as const },
+      bound: "exact" as const,
+      pv: ["d8h4"],
+      nodes: 200_000,
+      depth: 12,
+    },
+  };
+  const second = {
+    best: { ...first.best, nodes: 400_000, depth: 16 },
+    played: { ...first.played, nodes: 400_000, depth: 16 },
+    tactic: { ...first.tactic, nodes: 400_000, depth: 16 },
+  };
+
+  return {
+    id: "game-1:fixture-v1:2",
+    gameId: "game-1",
+    playerKey: "learner",
+    ply: 2,
+    theme: "mate-one",
+    direction: "allowed",
+    side: "white",
+    beforeFen: "rnbqkbnr/pppp1ppp/8/4p3/8/5P2/PPPPP1PP/RNBQKBNR w KQkq - 0 2",
+    afterFen: "rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2",
+    played: "g2g4",
+    recommended: "g2g3",
+    playedLine: ["g2g4", "d8h4"],
+    recommendedLine: ["g2g3"],
+    tacticalPly: 1,
+    targets: [],
+    consequence: { kind: "mate", gain: 0 },
+    executed: true,
+    lowTime: false,
+    verification: { first, second },
+    ...overrides,
   };
 }
