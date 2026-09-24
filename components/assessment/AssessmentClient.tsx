@@ -4,7 +4,7 @@ import { useState } from "react";
 import { explainFinding } from "@/lib/assessment/explanations";
 import type { Finding, OpeningMatch } from "@/lib/assessment/types";
 import type { CourseTree } from "@/lib/course/types";
-import { AssessmentStatus } from "./AssessmentStatus";
+import { AssessmentStatus, useRetryWaitSeconds } from "./AssessmentStatus";
 import { ImportForm } from "./ImportForm";
 import { OpeningSummary } from "./OpeningSummary";
 import { PriorityList } from "./PriorityList";
@@ -17,6 +17,7 @@ export function AssessmentClient({ courses }: { courses: CourseTree[] }): React.
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
+  const retryWaitSeconds = useRetryWaitSeconds(view?.snapshot?.draft?.retryAt);
 
   async function run(work: () => Promise<void>) {
     if (actionBusy) return;
@@ -51,7 +52,7 @@ export function AssessmentClient({ courses }: { courses: CourseTree[] }): React.
         onSelect={async (username) => { setSelectedFinding(null); setConfirmDelete(false); await run(() => controller.selectPlayer(username)); }}
         onImport={async (username) => { setSelectedFinding(null); setConfirmDelete(false); await run(async () => { await controller.selectPlayer(username); await controller.import(); }); }} />
       {view.playerKey && <div className="mc-button-row">
-        <button type="button" className="mc-button" disabled={actionBusy || view.phase === "importing" || view.phase === "analyzing"}
+        <button type="button" className="mc-button" disabled={actionBusy || view.phase === "importing" || view.phase === "analyzing" || retryWaitSeconds > 0}
           onClick={() => act(() => controller.import())}>Refresh games</button>
       </div>}
       <AssessmentStatus view={view} onStart={() => act(() => controller.start())}

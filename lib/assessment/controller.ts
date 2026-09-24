@@ -313,6 +313,8 @@ export function createAssessmentController(deps: ControllerDeps): AssessmentCont
     if (!playerKey) throw new Error("Select a player before importing.");
     const source = baseSnapshot(job);
     const resumable = source.draft?.coverage === "partial" ? source.draft : null;
+    const retryAt = source.draft?.retryAt && Date.parse(source.draft.retryAt);
+    if (retryAt && retryAt > deps.now().getTime()) return false;
     const refreshAfter = source.player.refreshAfter && Date.parse(source.player.refreshAfter);
     if (!resumable && refreshAfter && refreshAfter > deps.now().getTime()) {
       throw new Error(`refresh available after ${source.player.refreshAfter}`);

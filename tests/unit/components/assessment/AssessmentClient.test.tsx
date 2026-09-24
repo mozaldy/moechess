@@ -4,6 +4,7 @@ import { expect, test, vi } from "vitest";
 import { AssessmentClient } from "@/components/assessment/AssessmentClient";
 import { useAssessmentController } from "@/components/assessment/useAssessmentController";
 import type { AssessmentController, ControllerView } from "@/lib/assessment/controller";
+import { fixtureSnapshot } from "@/tests/fixtures/assessment";
 
 vi.mock("@/components/assessment/useAssessmentController", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/components/assessment/useAssessmentController")>();
@@ -43,6 +44,32 @@ test("refreshes the selected player without selecting again", async () => {
   await userEvent.click(screen.getByRole("button", { name: "Refresh games" }));
   expect(importGames).toHaveBeenCalledTimes(1);
   expect(selectPlayer).not.toHaveBeenCalled();
+});
+
+test("disables Refresh games until a zero-game draft's 429 deadline passes", () => {
+  vi.useFakeTimers();
+  try {
+    vi.setSystemTime(new Date("2026-09-20T12:00:00.000Z"));
+    const saved = fixtureSnapshot();
+    const retryAt = "2026-09-20T12:00:02.000Z";
+    const importGames = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(useAssessmentController).mockReturnValue({
+      controller: { import: importGames } as unknown as AssessmentController,
+      view: { ...emptyView, playerKey: "learner", phase: "paused", snapshot: {
+        ...saved, current: null, draft: { ...saved.current!, selectedIds: [], completedIds: [], coverage: "partial", state: "paused", retryAt },
+      } },
+      initError: null,
+    });
+    render(<AssessmentClient courses={[]} />);
+    expect(screen.getByRole("button", { name: "Refresh games" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Resume import" })).toBeDisabled();
+    act(() => vi.advanceTimersByTime(2000));
+    expect(screen.getByRole("button", { name: "Refresh games" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Resume import" })).toBeEnabled();
+    expect(importGames).not.toHaveBeenCalled();
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 test("pauses a pending import while the long action is busy", async () => {

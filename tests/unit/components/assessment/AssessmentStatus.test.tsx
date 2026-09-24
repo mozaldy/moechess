@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, test, vi } from "vitest";
 import { AssessmentStatus } from "@/components/assessment/AssessmentStatus";
@@ -56,6 +56,28 @@ test("shows session-only recovery and a retry countdown", () => {
   expect(screen.getByText(/Session only/)).toBeInTheDocument();
   expect(screen.getByText(/Try again in about/)).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Resume analysis" })).toBeDisabled();
+});
+
+test("offers a delayed import retry even when the partial draft has no selected games", () => {
+  vi.useFakeTimers();
+  try {
+    vi.setSystemTime(new Date("2026-09-20T12:00:00.000Z"));
+    const retryAt = "2026-09-20T12:00:02.000Z";
+    const onResume = vi.fn();
+    render(<AssessmentStatus view={{ ...view, phase: "paused", report: null, snapshot: {
+      ...view.snapshot!, current: null,
+      draft: { ...view.snapshot!.current!, state: "paused", coverage: "partial", selectedIds: [], completedIds: [], retryAt },
+    } }} onStart={vi.fn()} onResume={onResume} onCancel={vi.fn()} onContinueInMemory={vi.fn()} />);
+
+    expect(screen.getByText("No eligible games imported yet. The scan is unfinished.")).toBeInTheDocument();
+    expect(screen.getByText("Try again in about 2 seconds.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Resume import" })).toBeDisabled();
+    act(() => vi.advanceTimersByTime(2000));
+    expect(screen.getByRole("button", { name: "Resume import" })).toBeEnabled();
+    expect(screen.queryByText(/Try again in about/)).not.toBeInTheDocument();
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 test("explains when there are no supported recurring findings", () => {

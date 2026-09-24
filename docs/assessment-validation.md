@@ -12,7 +12,7 @@ The assessment engine is Stockfish.js 19.0.0 lite single-threaded, source revisi
 
 ## Browser coverage observed
 
-The three-game real-engine flow completed in Chromium and kept existing training progress unchanged. Its report survived reload after reopening the saved player. A replayable tactical example offered the played and recommended lines and a safe completed-game link. A separate legal Ruy Lopez fixture followed its course-position link successfully. The recovery suite covered 429 retry, competing Web Lock tabs, durable deletion, unsupported Web Locks with saved-report access, corrupt saved evidence, pause before/after a checkpoint, reload/resume without recomputing a completed game, worker asset failure and retry, refresh replacement, username isolation, quota failure with explicit session-only continuation, and deletion during active engine work. A `rate-limit` message mismatch and an unresponsive delete action during active analysis were each reproduced by failing browser tests and fixed. During the full non-live suite, pause-after-checkpoint took 21 ms from click to visible paused state (24 ms in the earlier focused run), below the one-second criterion; the saved checkpoint survived reload.
+The three-game real-engine flow completed in Chromium and kept existing training progress unchanged. Its report survived reload after reopening the saved player. A replayable tactical example offered the played and recommended lines and a safe completed-game link. A separate legal Ruy Lopez fixture followed its course-position link successfully. The recovery suite covered 429 retry, competing Web Lock tabs, durable deletion, unsupported Web Locks with saved-report access, corrupt saved evidence, pause before/after a checkpoint, reload/resume without recomputing a completed game, worker asset failure and retry, refresh replacement, username isolation, quota failure with explicit session-only continuation, and deletion during active engine work. A `rate-limit` message mismatch and an unresponsive delete action during active analysis were each reproduced by failing browser tests and fixed. A later whole-branch review found that Refresh could bypass the saved 429 retry deadline; the controller and UI now enforce it, and the targeted browser retry test passed after advancing the browser clock beyond the 60-second minimum. During the full non-live suite, pause-after-checkpoint took 21 ms from click to visible paused state (24 ms in the earlier focused run), below the one-second criterion; the saved checkpoint survived reload.
 
 Full-page screenshots of the completed report and open evidence board were captured and visually inspected at 390, 820, and 1440 CSS pixels in both Summer Sky and Night Shift themes. All six had no horizontal overflow (`scrollWidth === clientWidth`), kept the replay controls visible, and were rendered with reduced motion enabled. Screenshots are under `/tmp/moechess-assessment-visual/` in this test environment and are not committed. The keyboard test also captures actual text changes inside the polite progress live region, exercises Enter on import/analysis/evidence controls, and checks reduced-motion preference.
 
@@ -23,12 +23,12 @@ The browser runner in this sandbox used `pnpm exec next build --webpack`, `pnpm 
 | Check | Observed result |
 | --- | --- |
 | `node scripts/vendor-stockfish.mjs --check` | Passed (exit 0). |
-| `pnpm test` | 49 files, 436 tests passed. |
+| `pnpm test` | 49 files, 440 tests passed after the 429 retry fix. |
 | `pnpm typecheck` | Passed. |
 | `pnpm lint` | Passed. |
 | `pnpm exec next build --webpack` | Passed; `/assessment` prerendered. |
 | `pnpm build` | Failed in the sandbox: Google Fonts fetch; escalated retry: Turbopack CSS process port-binding panic. |
-| Non-live Playwright, production Webpack build | 25 passed, 1 opt-in performance test skipped (1.7 minutes). |
+| Non-live Playwright, production Webpack build | 25 passed, 1 opt-in performance test skipped (1.7 minutes), before the final 429 retry guard. Its targeted recovery test passed again after that guard. |
 | Opt-in live public API check | Passed, 1/1: browser-origin Chess.com archives and latest monthly endpoint readable. |
 | Full 50-game benchmark | Failed at 15/50 after 28.3 minutes. |
 | `git diff --check` | Passed. |

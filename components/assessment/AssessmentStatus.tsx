@@ -11,6 +11,17 @@ function formatWindow(startIso: string, endIso: string): string | null {
   return `${format.format(start)} – ${format.format(new Date(end.getTime() - 1))}`;
 }
 
+export function useRetryWaitSeconds(retryAt?: string): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!retryAt) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [retryAt]);
+  const deadline = retryAt ? Date.parse(retryAt) : NaN;
+  return Number.isFinite(deadline) ? Math.max(0, Math.ceil((deadline - now) / 1000)) : 0;
+}
+
 export function AssessmentStatus({ view, onStart, onResume, onCancel, onContinueInMemory }: {
   view: ControllerView;
   onStart: () => void;
@@ -24,13 +35,7 @@ export function AssessmentStatus({ view, onStart, onResume, onCancel, onContinue
   const skipped = (assessment?.cursor.invalid ?? 0) + (assessment?.cursor.ineligible ?? 0);
   const unfinished = Math.max(0, selected - done);
   const inProgress = view.phase === "importing" || view.phase === "analyzing";
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(timer);
-  }, []);
-  const retryAt = assessment?.retryAt ? new Date(assessment.retryAt) : null;
-  const waitSeconds = retryAt && Number.isFinite(retryAt.getTime()) ? Math.max(0, Math.ceil((retryAt.getTime() - now) / 1000)) : 0;
+  const waitSeconds = useRetryWaitSeconds(assessment?.retryAt);
   const message = view.message ?? assessment?.reason;
   const windowLabel = assessment ? formatWindow(assessment.cursor.windowStart, assessment.cursor.windowEnd) : null;
 
@@ -58,8 +63,8 @@ export function AssessmentStatus({ view, onStart, onResume, onCancel, onContinue
     <div className="mc-button-row">
       {assessment && selected > 0 && (view.phase === "ready" || view.phase === "complete") &&
         <button type="button" onClick={onStart} disabled={view.storage.kind !== "ok" && !view.sessionOnly}>Start analysis</button>}
-      {assessment && selected > 0 && (view.phase === "paused" || view.phase === "failed") &&
-        <button type="button" onClick={onResume} disabled={waitSeconds > 0 || (view.storage.kind !== "ok" && !view.sessionOnly)}>Resume analysis</button>}
+      {assessment && (selected > 0 || assessment.coverage === "partial") && (view.phase === "paused" || view.phase === "failed") &&
+        <button type="button" onClick={onResume} disabled={waitSeconds > 0 || (view.storage.kind !== "ok" && !view.sessionOnly)}>{selected > 0 ? "Resume analysis" : "Resume import"}</button>}
       {inProgress && <button type="button" onClick={onCancel}>Pause assessment</button>}
       {assessment && view.storage.kind !== "ok" && !view.sessionOnly &&
         <button type="button" onClick={onContinueInMemory}>Continue for this session</button>}

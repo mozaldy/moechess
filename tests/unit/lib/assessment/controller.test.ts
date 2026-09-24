@@ -438,6 +438,44 @@ describe("createAssessmentController", () => {
     expect(controller.getSnapshot().phase).toBe("complete");
   });
 
+  test.each(["import", "resume"] as const)("%s waits for a saved 429 deadline before requesting zero-game draft data", async (entry) => {
+    const store = new MemoryAssessmentStore();
+    const deadline = new Date(NOW.getTime() + 60_000).toISOString();
+    let clock = NOW;
+    let requests = 0;
+    const archives = vi.fn(async () => {
+      requests += 1;
+      if (requests === 1) throw new ImportError("rate-limit", { retryAt: deadline });
+      return ["2026/09"];
+    });
+    const month = vi.fn(async () => []);
+    const controller = createAssessmentController(deps({
+      store, client: client({ archives, month }), now: () => clock,
+    }));
+    await controller.selectPlayer("learner");
+    await controller.import();
+
+    expect(controller.getSnapshot().phase).toBe("paused");
+    expect(controller.getSnapshot().snapshot?.draft).toMatchObject({
+      coverage: "partial", selectedIds: [], retryAt: deadline,
+    });
+    const saved = await store.load("learner");
+    expect(saved?.draft?.retryAt).toBe(deadline);
+
+    await controller[entry]();
+    expect(archives).toHaveBeenCalledTimes(1);
+    expect(month).not.toHaveBeenCalled();
+    expect(controller.getSnapshot().phase).toBe("paused");
+    expect(controller.getSnapshot().snapshot?.draft?.retryAt).toBe(deadline);
+
+    clock = new Date(deadline);
+    await controller[entry]();
+    expect(archives).toHaveBeenCalledTimes(2);
+    expect(month).toHaveBeenCalledOnce();
+    expect(controller.getSnapshot().phase).toBe(entry === "resume" ? "complete" : "ready");
+    expect(controller.getSnapshot().snapshot?.draft).toBeNull();
+  });
+
   test("does not begin the next game before the prior checkpoint commits", async () => {
     const memory = new MemoryAssessmentStore();
     const gameOne = fixtureGame();

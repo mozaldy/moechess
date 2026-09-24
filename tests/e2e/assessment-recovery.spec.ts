@@ -32,18 +32,23 @@ async function completedAnalysisTimes(page: Page): Promise<Record<string, string
 }
 
 test("rate limit explains the wait and a later import can retry", async ({ page }) => {
+  await page.clock.install();
   await page.route("https://api.chess.com/pub/player/learner/games/archives", async (route) => {
     await route.fulfill({ status: 429, body: "{}", headers: {
-      "retry-after": "1", "access-control-allow-origin": "*",
+      "retry-after": "3", "access-control-allow-origin": "*",
     } });
   });
   await page.goto("/assessment");
   await page.getByRole("textbox", { name: "Chess.com username" }).fill("learner");
   await page.getByRole("button", { name: "Import games" }).click();
   await expect(page.getByText("Chess.com is limiting requests. Try again after the wait shown below.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Refresh games" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Resume import" })).toBeDisabled();
   await page.unroute("https://api.chess.com/pub/player/learner/games/archives");
   await mockAssessmentApi(page, [rawGame({ end_time: Math.floor(Date.now() / 1000) - 1 })]);
-  await page.getByRole("button", { name: "Import games" }).click();
+  await page.clock.fastForward(61_000);
+  await expect(page.getByRole("button", { name: "Resume import" })).toBeEnabled({ timeout: 10_000 });
+  await page.getByRole("button", { name: "Refresh games" }).click();
   await expect(page.getByRole("button", { name: "Start analysis" })).toBeVisible();
 });
 
