@@ -23,7 +23,7 @@ The browser runner in this sandbox used `pnpm exec next build --webpack`, `pnpm 
 | Check | Observed result |
 | --- | --- |
 | `node scripts/vendor-stockfish.mjs --check` | Passed (exit 0). |
-| `pnpm test` | 49 files, 440 tests passed after the 429 retry fix. |
+| `pnpm test` | 50 files, 451 tests passed after the search-cache change. |
 | `pnpm typecheck` | Passed. |
 | `pnpm lint` | Passed. |
 | `pnpm exec next build --webpack` | Passed; `/assessment` prerendered. |
@@ -42,6 +42,12 @@ The timed-out run did not emit its in-page timing/heap array because its origina
 A three-game diagnostic subset (`MOECHESS_PERFORMANCE_GAMES=3`) completed in 112,448.5 ms from observer start, with browser progress checkpoints at 38,983.3, 54,572.8, and 112,448.5 ms. The implied intervals were 38.98, 15.59, and 57.88 seconds. This subset used the first three distinct legal fixture games (12, 14, and 16 plies); its timing cannot be extrapolated linearly to the remaining longer games. Chromium reported `performance.memory.usedJSHeapSize` as exactly 10,000,000 bytes at each sampled checkpoint, indicating a coarse or unavailable page-heap signal; no credible peak browser/worker memory measurement was obtained. The main page's sole Stockfish Resource Timing entry had a negative duration, so it was discarded as invalid.
 
 A separate fresh Chromium page fetched each local engine asset with `cache: "no-store"` and read its complete body: worker JS 21,415 bytes in 3.8 ms, WASM 1,787,571 bytes in 43.8 ms, and NNUE 1,166,381 bytes in 2.2 ms, all HTTP 200 from localhost. These are local transfer observations, **not** engine initialization or remote-user download times. The browser identified itself as HeadlessChrome 153.0.8010.12 on macOS; `navigator.hardwareConcurrency` reported 10. The full benchmark's Playwright Desktop Chrome profile emitted a Windows-style user agent override even though the host was arm64 macOS.
+
+### Exact-search reuse follow-up
+
+The original timed-out 50-game result above predates a per-game cache for identical, completed Stockfish searches. Instrumentation showed that 55–61% of actual searches in three short games and one medium game repeated the same full position, perspective, node budget, and ordered root moves. The cache reuses only exact results with a fully legal principal variation and matching perspective/root; it does not change the 200,000/400,000 node budgets, tactical certificates, or analysis signature. Bounded, malformed, canceled, and failed searches are not retained.
+
+With the cache, a three-short-game Chromium run took 63.8 seconds instead of 113.4 seconds and made 219 physical searches instead of 508. One medium game took 75.6 instead of 123.8 seconds and made 166 instead of 402 searches. A 46-ply long game still took 182.6 seconds (531 physical searches; 114.0 seconds in engine searches and 68.2 seconds in verifier work). A later three-game real-Stockfish corpus run took 63.9 seconds. The full 50-game batch was **not rerun** after this optimization: the long-game measurement alone indicates that 20 similar long games would exceed the original 28.3-minute deadline. This is a projection, not a measured full-batch result. The desktop completion criterion remains open.
 
 ## Remaining release verification
 

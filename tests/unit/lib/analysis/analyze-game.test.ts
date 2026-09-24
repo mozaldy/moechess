@@ -1,8 +1,10 @@
+import { readFileSync } from "node:fs";
+import { Chess } from "chess.js";
 import { expect, test } from "vitest";
 import type { ImportedGame } from "@/lib/assessment/types";
 import type { AnalysisEngine, SearchRequest, SearchResult } from "@/lib/analysis/engine/types";
 import { analyzeGame } from "@/lib/analysis/tactics/analyze-game";
-import { findCandidates } from "@/lib/analysis/tactics/candidates";
+import { findCandidates, toUci } from "@/lib/analysis/tactics/candidates";
 
 const cp = (request: SearchRequest): SearchResult => ({
   score: { kind: "cp", value: request.rootMoves?.[0] === "a1a8" ? 500 : request.rootMoves?.[0] === "g1h2" ? 0 : 500, perspective: request.perspective },
@@ -87,4 +89,23 @@ test("marks an allowed threat executed only when the recorded reply is the tacti
   expect(analysis.findings).toEqual(expect.arrayContaining([
     expect.objectContaining({ direction: "allowed", executed: true, lowTime: false }),
   ]));
+});
+
+test("keeps every rejection while reusing repeated game-position searches", async () => {
+  const pgn = readFileSync("tests/fixtures/assessment-performance.pgn", "utf8").split(/(?=\[Event )/)[0].trim();
+  const board = new Chess();
+  board.loadPgn(pgn);
+  const moves = board.history({ verbose: true }).map(toUci);
+  let searches = 0;
+  const engine = new FakeEngine((request) => {
+    searches++;
+    const position = new Chess(request.history.initialFen);
+    for (const move of request.history.moves) position.move(move);
+    const best = request.rootMoves?.[0] ?? toUci(position.moves({ verbose: true })[0]);
+    return { score: { kind: "cp", value: 0, perspective: request.perspective }, bound: "exact", pv: [best], nodes: request.nodes, depth: 12 };
+  });
+  const result = await analyzeGame(game({ history: { initialFen: new Chess().fen(), moves }, sans: board.history(), clocks: {} }), engine, "sig", new AbortController().signal);
+  expect(result.findings).toEqual([]);
+  expect(result.exclusions).toEqual({ "The consequence was not stable at both engine budgets": 36 });
+  expect(searches).toBeLessThan(108);
 });

@@ -1,5 +1,6 @@
 import type { Finding, GameAnalysis, ImportedGame, Theme } from "@/lib/assessment/types";
 import type { AnalysisEngine } from "@/lib/analysis/engine/types";
+import { createGameSearchEngine } from "@/lib/analysis/engine/search-cache";
 import { findCandidates, replayHistory } from "./candidates";
 import { verifyCandidate } from "./verify";
 
@@ -32,6 +33,7 @@ export async function analyzeGame(
   assertActive(signal);
   const verified: Finding[] = [];
   const exclusions: Record<string, number> = {};
+  const gameEngine = createGameSearchEngine(engine);
 
   for (let ply = 0; ply < game.history.moves.length; ply += 1) {
     if (!playerTurn(game, ply)) continue;
@@ -41,7 +43,7 @@ export async function analyzeGame(
     const candidates = findCandidates(history, played, game.side);
 
     for (const candidate of candidates) {
-      const result = await verifyCandidate(candidate, engine, signal);
+      const result = await verifyCandidate(candidate, gameEngine, signal);
       assertActive(signal);
       if (result.kind !== "verified") {
         addExclusion(exclusions, result.reason);
