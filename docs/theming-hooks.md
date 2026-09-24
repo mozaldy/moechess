@@ -166,3 +166,21 @@ Set on `<html>` as CSS custom properties. The active theme id is on
 | `.mc-theme-swatch` | Theme colour preview |
 | `.mc-radio-row` | Row of radio options |
 | `.mc-credits` | Credits list |
+
+## Assessment
+
+| Hook | Element |
+| --- | --- |
+| `.mc-assessment` | Assessment page. `[data-state]` |
+| `.mc-assessment-hero` | Page introduction |
+| `.mc-assessment-import` | Import and saved-player panel |
+| `.mc-assessment-form` | Chess.com username form |
+| `.mc-assessment-status` | Progress, coverage, and controls |
+| `.mc-assessment-count` | Analyzed game count |
+| `.mc-assessment-results` | Priorities and openings grid |
+| `.mc-assessment-priorities` | Ordered priorities or individual examples |
+| `.mc-study-priority` | One tactical study recommendation |
+| `.mc-study-examples` | Expandable list of inspectable findings |
+| `.mc-opening-summary` | Opening counts and course links |
+| `.mc-assessment-evidence` | Selected finding explanation |
+| `.mc-assessment-delete` | Local data deletion control |

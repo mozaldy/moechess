@@ -8,6 +8,7 @@ import type { Side } from "@/lib/chess/position";
 const LINKS = [
   { href: "/", label: "Courses", matches: (path: string) => path === "/" || path.startsWith("/course") },
   { href: "/review", label: "Review", matches: (path: string) => path.startsWith("/review") },
+  { href: "/assessment", label: "Assessment", matches: (path: string) => path.startsWith("/assessment") },
   { href: "/settings", label: "Settings", matches: (path: string) => path.startsWith("/settings") },
 ];
 
