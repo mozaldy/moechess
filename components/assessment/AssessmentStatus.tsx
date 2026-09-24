@@ -70,7 +70,7 @@ export function AssessmentStatus({ view, onStart, onResume, onCancel, onContinue
 function friendlyMessage(message: string): string {
   const codes: Record<string, string> = {
     "not-found": "Chess.com could not find that player. Check the username and try again.",
-    "rate-limited": "Chess.com is limiting requests. Try again after the wait shown below.",
+    "rate-limit": "Chess.com is limiting requests. Try again after the wait shown below.",
     "invalid-response": "Chess.com returned game data that could not be read. Try importing again.",
     "network": "Could not reach Chess.com. Check your connection and resume.",
     "busy": "Another tab is analyzing games. Close it or wait, then resume.",

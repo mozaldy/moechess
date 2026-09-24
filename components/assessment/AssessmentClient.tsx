@@ -74,7 +74,10 @@ export function AssessmentClient({ courses }: { courses: CourseTree[] }): React.
       {view.playerKey && <section className="mc-assessment-delete" aria-label="Local player data">
         {!confirmDelete ? <button type="button" className="mc-button" onClick={() => setConfirmDelete(true)}>Delete local data for {view.snapshot?.player.displayName ?? view.playerKey}</button>
           : <div className="mc-panel"><p>Delete this player’s games and assessment from this browser?</p>
-            <div className="mc-button-row"><button type="button" onClick={() => act(async () => { await controller.deletePlayer(); setConfirmDelete(false); setSelectedFinding(null); })}>Delete local data</button>
+            <div className="mc-button-row"><button type="button" onClick={() => {
+              void controller.deletePlayer().then(() => { setConfirmDelete(false); setSelectedFinding(null); })
+                .catch(() => setActionError("Could not delete local data. Try again."));
+            }}>Delete local data</button>
               <button type="button" onClick={() => setConfirmDelete(false)}>Keep data</button></div></div>}
       </section>}
     </>}
