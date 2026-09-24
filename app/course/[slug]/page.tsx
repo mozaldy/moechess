@@ -18,5 +18,9 @@ export default async function CoursePage(props: PageProps<"/course/[slug]">) {
   const { slug } = await props.params;
   const course = loadCourse(slug);
   if (!course) notFound();
-  return <ExploreView tree={course} />;
+  const query = await props.searchParams;
+  const initialNodeId = typeof query.node === "string" && Object.hasOwn(course.nodes, query.node)
+    ? query.node : undefined;
+  const orientation = query.side === "white" || query.side === "black" ? query.side : undefined;
+  return <ExploreView tree={course} initialNodeId={initialNodeId} orientation={orientation} />;
 }

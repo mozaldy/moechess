@@ -18,7 +18,7 @@ export function OpeningSummary({ matches, courses }: { matches: OpeningMatch[]; 
         return <li key={`${match.courseSlug ?? match.label}:${match.side}`}>
           <strong>{match.label}</strong> <span className="mc-muted">{count} {count === 1 ? "game" : "games"} as {match.side}</span>
           <div className="mc-button-row">{links.explore && <Link href={links.explore}>Explore course position</Link>}
-            {links.lessons.map((lesson) => <Link key={lesson.href} href={lesson.href}>{lesson.label}</Link>)}</div>
+            {links.lessons.map((lesson) => <Link key={lesson.href} href={lesson.href}>Learn {lesson.label}</Link>)}</div>
         </li>;
       })}</ul>}
   </section>;

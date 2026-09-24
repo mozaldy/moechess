@@ -55,6 +55,12 @@ describe("Board rendering", () => {
 });
 
 describe("Board input", () => {
+  test("hides move entry for replay while retaining the normal default", () => {
+    const { rerender } = setup({ interactive: false, showMoveInput: false });
+    expect(screen.queryByRole("textbox", { name: "Type a move" })).toBeNull();
+    rerender(<Board fen={START_FEN} orientation="white" interactive={false} label="Training board" />);
+    expect(screen.getByRole("textbox", { name: "Type a move" })).toBeDisabled();
+  });
   test("click a piece, then a target square, to move", () => {
     const { onMove, container } = setup();
     fireEvent.click(square("e2"));

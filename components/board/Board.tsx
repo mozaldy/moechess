@@ -31,6 +31,7 @@ export interface BoardProps {
   pieceSet?: PieceSet;
   // A move played for the learner (opponent or auto-played), e.g. "White played Nf3".
   announcement?: string;
+  showMoveInput?: boolean;
 }
 
 const PIECE_NAMES: Record<string, string> = {
@@ -56,6 +57,7 @@ function describePiece(code: PieceCode | undefined): string {
 export function Board({
   fen, orientation, interactive, label, onMove,
   lastMove = null, arrows = [], highlights = [], feedback = null, pieceSet, announcement,
+  showMoveInput = true,
 }: BoardProps) {
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
   const set = pieceSet ?? getPieceSet(null);
@@ -318,7 +320,7 @@ export function Board({
         </div>
       </div>
 
-      <form className="mc-move-input" onSubmit={handleTypedMove}>
+      {showMoveInput && <form className="mc-move-input" onSubmit={handleTypedMove}>
         <label htmlFor={`${uid}-move`}>Type a move</label>
         <input
           id={`${uid}-move`}
@@ -333,7 +335,7 @@ export function Board({
         />
         <button type="submit" disabled={!interactive}>Play</button>
         {typedError && <p id={`${uid}-move-error`} className="mc-move-error" role="alert">{typedError}</p>}
-      </form>
+      </form>}
 
       <p className="mc-sr-only" aria-live="polite">{spoken.text}</p>
     </div>

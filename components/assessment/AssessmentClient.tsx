@@ -9,6 +9,7 @@ import { ImportForm } from "./ImportForm";
 import { OpeningSummary } from "./OpeningSummary";
 import { PriorityList } from "./PriorityList";
 import { useAssessmentController } from "./useAssessmentController";
+import { EvidenceViewer } from "./EvidenceViewer";
 
 export function AssessmentClient({ courses }: { courses: CourseTree[] }): React.JSX.Element {
   const { controller, view, initError } = useAssessmentController(courses);
@@ -34,6 +35,7 @@ export function AssessmentClient({ courses }: { courses: CourseTree[] }): React.
   const visibleFinding = selectedFinding && view?.report &&
     [...view.report.priorities, ...view.report.examples].some((item) => item.findings.some((finding) => finding.id === selectedFinding.id))
     ? selectedFinding : null;
+  const visibleGame = visibleFinding && view?.snapshot?.games.find((game) => game.id === visibleFinding.gameId);
 
   return <section className="mc-assessment" data-state={view?.phase ?? "loading"} aria-labelledby="assessment-title">
     <header className="mc-assessment-hero">
@@ -65,6 +67,9 @@ export function AssessmentClient({ courses }: { courses: CourseTree[] }): React.
         <h3>{explainFinding(visibleFinding).title}</h3>
         <p>{explainFinding(visibleFinding).explanation}</p>
         <p>{explainFinding(visibleFinding).advice}</p>
+        {visibleGame
+          ? <EvidenceViewer key={visibleFinding.id} finding={visibleFinding} game={visibleGame} />
+          : <p role="alert" className="mc-notice">Example unavailable because its saved game is missing.</p>}
       </section>}
       {view.playerKey && <section className="mc-assessment-delete" aria-label="Local player data">
         {!confirmDelete ? <button type="button" className="mc-button" onClick={() => setConfirmDelete(true)}>Delete local data for {view.snapshot?.player.displayName ?? view.playerKey}</button>

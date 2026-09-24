@@ -8,6 +8,7 @@ import { buildCourseTree, parsePgnFile } from "@/lib/course/build-tree";
 import type { CourseMeta } from "@/lib/course/types";
 import type { WorkspaceEvent } from "@/lib/events/bus";
 import { MemoryProgressStore } from "@/lib/progress/memory-store";
+import { learnedLineKey } from "@/lib/progress/types";
 import { emptySnapshot } from "@/lib/progress/validate";
 import { LocalStorageSettingsStore } from "@/lib/settings/local-storage-store";
 
@@ -29,11 +30,11 @@ function EventLog({ into }: { into: WorkspaceEvent[] }) {
   return null;
 }
 
-function setup(store = new MemoryProgressStore(), log: WorkspaceEvent[] = []) {
+function setup(store = new MemoryProgressStore(), log: WorkspaceEvent[] = [], props: { initialNodeId?: string; orientation?: "white" | "black" } = {}) {
   render(
     <WorkspaceProvider progressStore={store} settingsStore={new LocalStorageSettingsStore(null)}>
       <EventLog into={log} />
-      <ExploreView tree={tree} />
+      <ExploreView tree={tree} {...props} />
     </WorkspaceProvider>,
   );
   return { store, log, user: userEvent.setup() };
@@ -42,6 +43,19 @@ function setup(store = new MemoryProgressStore(), log: WorkspaceEvent[] = []) {
 const panel = () => within(screen.getByRole("heading", { name: "Ruy Lopez" }).parentElement!);
 
 describe("ExploreView", () => {
+  test("a linked node and side override saved display without changing progress or settings", async () => {
+    const saved = { ...emptySnapshot(), explore: { ruy: { lastNodeId: "e4" } },
+      learnedLines: { [learnedLineKey("ruy", "white", "berlin")]: { learnedAt: "2026-09-20T00:00:00.000Z" } } };
+    const { store, user } = setup(new MemoryProgressStore(saved), [], { initialNodeId: "e4 e5 Nf3", orientation: "black" });
+    expect(within(await screen.findByRole("list", { name: "Moves played" })).getByRole("button", { name: "2. Nf3" }))
+      .toHaveAttribute("aria-current", "step");
+    expect(document.querySelector(".mc-board")).toHaveAttribute("data-orientation", "black");
+    expect(screen.getByRole("link", { name: "Practise Berlin again" })).toBeInTheDocument();
+    expect((await store.load()).explore.ruy.lastNodeId).toBe("e4");
+    await user.click(panel().getByRole("button", { name: "Back" }));
+    expect((await store.load()).explore.ruy.lastNodeId).toBe("e4 e5");
+  });
+
   test("starts at the beginning with the course moves offered", async () => {
     setup();
     expect(await screen.findByText("Play a move on the board, or pick one of the course moves below.")).toBeInTheDocument();

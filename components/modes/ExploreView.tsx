@@ -14,17 +14,22 @@ import type { CourseTree } from "@/lib/course/types";
 import { learnedLineKey } from "@/lib/progress/types";
 import { cardForNode } from "@/lib/training/cards";
 import { isDue } from "@/lib/training/scheduler";
+import type { Side } from "@/lib/analysis/engine/types";
 
-export function ExploreView({ tree }: { tree: CourseTree }) {
+export function ExploreView({ tree, initialNodeId, orientation }: { tree: CourseTree; initialNodeId?: string; orientation?: Side }) {
   const { snapshot, settings, events, now, commitProgress } = useWorkspace();
   const [openedAt] = useState(now);
-  const [chosenId, setChosenId] = useState<string | null>(null);
+  const [linkedSelection, setLinkedSelection] = useState({ node: initialNodeId, chosen: null as string | null });
+  if (linkedSelection.node !== initialNodeId) setLinkedSelection({ node: initialNodeId, chosen: null });
   const [notice, setNotice] = useState<string | null>(null);
 
   const slug = tree.meta.slug;
   const side = settings.side;
+  const displaySide = orientation ?? side;
   const savedId = snapshot?.explore[slug]?.lastNodeId;
-  const nodeId = chosenId ?? (savedId && tree.nodes[savedId] ? savedId : tree.rootId);
+  const effectiveChosen = linkedSelection.node === initialNodeId ? linkedSelection.chosen : null;
+  const nodeId = effectiveChosen ?? (initialNodeId && tree.nodes[initialNodeId] ? initialNodeId :
+    savedId && tree.nodes[savedId] ? savedId : tree.rootId);
   const node = tree.nodes[nodeId];
   const parent = node.parentId ? tree.nodes[node.parentId] : null;
   const lastMove = parent && node.san ? applySan(parent.fen, node.san) : null;
@@ -45,7 +50,7 @@ export function ExploreView({ tree }: { tree: CourseTree }) {
   }, [node, events]);
 
   function select(id: string) {
-    setChosenId(id);
+    setLinkedSelection({ node: initialNodeId, chosen: id });
     setNotice(null);
     void commitProgress((store) => store.setExplorePosition(slug, id));
   }
@@ -137,7 +142,7 @@ export function ExploreView({ tree }: { tree: CourseTree }) {
       board={(
         <Board
           fen={node.fen}
-          orientation={side}
+          orientation={displaySide}
           interactive
           label={`${tree.meta.name} board`}
           onMove={handleMove}
