@@ -51,14 +51,14 @@ With the cache, a three-short-game Chromium run took 63.8 seconds instead of 113
 
 ### Certificate-first verifier follow-up
 
-Recorded on 2026-11-01 on the same arm64 macOS host, Playwright Chromium, production Webpack build and pinned Stockfish.js worker. Three verifier changes leave the node budgets, evidence thresholds, certificate rules and analysis signature unchanged:
+Recorded on 2026-11-01 on an arm64 macOS 27.0 host, Playwright Chromium, production Webpack build and pinned Stockfish.js worker. Three verifier changes leave the node budgets, evidence thresholds, certificate rules and analysis signature unchanged:
 - A candidate whose best and played scores cannot support its theme's consequence is rejected before its tactic search. Each theme's support test already required that.
 - A material candidate's concrete certificate runs once, before the first tactic search. Certificates for later candidates at the same decision are prefetched on the main thread while the engine worker searches.
 - The certificate search walks chess.js 1.4.0 internal moves instead of building SAN/FEN for each visited position. Unit tests compare these helpers with the public API, and chess.js is pinned exactly.
 
 Analysis yields now use a message task instead of a clamped zero-delay timer.
 
-Both builds were measured in this session, one after the other, with the same fixture games:
+Both builds were measured one after the other, with the same fixture games. The long-game row and the findings comparison below used two temporary, uncommitted edits to the `@performance` spec: a fixture offset and a dump of the saved IndexedDB analyses. The committed spec still always starts at game 0.
 
 | Subset | Before (`5352343`) | After |
 | --- | --- | --- |
