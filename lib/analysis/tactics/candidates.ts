@@ -1,5 +1,6 @@
 import { Chess, type Move, type PieceSymbol, type Square } from "chess.js";
 import type { GameHistory, Side } from "@/lib/analysis/engine/types";
+import { playUci } from "./board-internals";
 import { attackedTargets } from "./geometry";
 import type { Candidate } from "./types";
 
@@ -27,7 +28,8 @@ export function toUci(move: Move): string {
 export function replayHistory(history: GameHistory): Chess {
   const board = new Chess(history.initialFen);
   for (const move of history.moves) {
-    board.move(moveDescriptor(move));
+    moveDescriptor(move); // rejects malformed UCI with the same error as before
+    playUci(board, move);
   }
   return board;
 }

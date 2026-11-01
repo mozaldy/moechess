@@ -1,7 +1,8 @@
 import { describe, expect, test } from "vitest";
 import { EngineError, type AnalysisEngine, type SearchRequest, type SearchResult } from "@/lib/analysis/engine/types";
 import type { Candidate } from "@/lib/analysis/tactics/types";
-import { engineLineSupports, passesMaterialGate, verifyCandidate } from "@/lib/analysis/tactics/verify";
+import { certifyGain } from "@/lib/analysis/tactics/material";
+import { createCertificatePrefetch, engineLineSupports, passesMaterialGate, verifyCandidate } from "@/lib/analysis/tactics/verify";
 
 const result = (
   value: number,
@@ -80,6 +81,24 @@ describe("verifyCandidate", () => {
     ]);
     await expect(verifyCandidate(missedQueen, new QueueEngine(answers), new AbortController().signal))
       .resolves.toMatchObject({ kind: "rejected" });
+  });
+
+  test("skips the tactic search when best and played scores leave no consequence", async () => {
+    const engine = new QueueEngine([result(120, "exact", ["a1a8"]), result(80, "exact", ["g1h2"])]);
+    await expect(verifyCandidate(missedQueen, engine, new AbortController().signal))
+      .resolves.toMatchObject({ kind: "rejected" });
+    expect(engine.requests.map(({ rootMoves }) => rootMoves)).toEqual([undefined, ["g1h2"]]);
+  });
+
+  test("checks the material certificate before spending a tactic search", async () => {
+    const candidate: Candidate = {
+      ...missedQueen,
+      history: { initialFen: "r5k1/1b6/8/8/8/8/8/Q5K1 w - - 0 1", moves: [] },
+    };
+    const engine = new QueueEngine([result(500, "exact", ["a1a8", "b7a8"]), result(0, "exact", ["g1h2"])]);
+    await expect(verifyCandidate(candidate, engine, new AbortController().signal))
+      .resolves.toMatchObject({ kind: "rejected", reason: "Defense b7a8 refutes the claimed gain" });
+    expect(engine.requests).toHaveLength(2);
   });
 
   test("returns inconclusive for a bound or illegal principal variation", async () => {
@@ -217,5 +236,30 @@ describe("verifyCandidate", () => {
     ]);
     await expect(verifyCandidate(candidate, new QueueEngine(answers), new AbortController().signal))
       .resolves.toMatchObject({ kind: "rejected", reason: expect.stringMatching(/alternative/) });
+  });
+});
+
+describe("createCertificatePrefetch", () => {
+  const position = { initialFen: "r5k1/1b6/8/8/8/3n4/8/Q5K1 w - - 0 1", moves: [] };
+  const takeRook: Candidate = { ...missedQueen, history: position, tactic: "a1a8", targets: ["a8"] };
+  const takeKnight: Candidate = { ...missedQueen, history: position, tactic: "a1d4", targets: ["d4"] };
+  const mate: Candidate = { ...missedQueen, history: position, theme: "mate-one", tactic: "a1a8", targets: [] };
+
+  test("queues later material candidates and returns the certificates a direct check would", async () => {
+    const signal = new AbortController().signal;
+    const prefetch = createCertificatePrefetch([takeRook, mate, takeKnight], signal);
+    const first = prefetch.certificate(takeRook, result(500), result(0, "exact", ["g1h2"]));
+    const queued = prefetch.certificate(takeKnight, result(500), result(0, "exact", ["g1h2"]));
+    expect(prefetch.certificate(takeKnight, result(500), result(0, "exact", ["g1h2"]))).toBe(queued);
+    expect(await first).toEqual(await certifyGain(position, "a1a8", "white", signal));
+    expect(await queued).toEqual(await certifyGain(position, "a1d4", "white", signal));
+  });
+
+  test("rejects a requested certificate after abort without leaking queued rejections", async () => {
+    const controller = new AbortController();
+    const prefetch = createCertificatePrefetch([takeRook, takeKnight], controller.signal);
+    controller.abort();
+    await expect(prefetch.certificate(takeRook, result(500), result(0, "exact", ["g1h2"])))
+      .rejects.toMatchObject({ name: "AbortError" });
   });
 });

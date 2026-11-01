@@ -1,8 +1,9 @@
 import type { Finding, GameAnalysis, ImportedGame, Theme } from "@/lib/assessment/types";
 import type { AnalysisEngine } from "@/lib/analysis/engine/types";
 import { createGameSearchEngine } from "@/lib/analysis/engine/search-cache";
+import { yieldToEventLoop } from "@/lib/analysis/yield";
 import { findCandidates, replayHistory } from "./candidates";
-import { verifyCandidate } from "./verify";
+import { createCertificatePrefetch, verifyCandidate } from "./verify";
 
 const precedence: Record<Theme, number> = { "mate-one": 0, fork: 1, hanging: 2 };
 
@@ -41,9 +42,10 @@ export async function analyzeGame(
     const played = game.history.moves[ply];
     const history = { initialFen: game.history.initialFen, moves: game.history.moves.slice(0, ply) };
     const candidates = findCandidates(history, played, game.side);
+    const certificates = createCertificatePrefetch(candidates, signal);
 
     for (const candidate of candidates) {
-      const result = await verifyCandidate(candidate, gameEngine, signal);
+      const result = await verifyCandidate(candidate, gameEngine, signal, certificates);
       assertActive(signal);
       if (result.kind !== "verified") {
         addExclusion(exclusions, result.reason);
@@ -61,7 +63,7 @@ export async function analyzeGame(
       });
     }
 
-    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    await yieldToEventLoop();
     assertActive(signal);
   }
 
