@@ -1,6 +1,8 @@
 import { Chess, type Move, type PieceSymbol, type Square } from "chess.js";
 import type { GameHistory, Side } from "@/lib/analysis/engine/types";
-import { replayHistory, toUci } from "./candidates";
+import { yieldToEventLoop } from "@/lib/analysis/yield";
+import { checkSuffix, legalMoves, play, undo, type LegalMove } from "./board-internals";
+import { replayHistory } from "./candidates";
 
 const VALUES: Record<PieceSymbol, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
 const MAX_PLIES = 6;
@@ -42,11 +44,12 @@ export function materialBalance(board: Chess, side: Side): number {
     : sum, 0);
 }
 
-function orderedMoves(board: Chess): Move[] {
-  return board.moves({ verbose: true }).sort((left, right) => {
-    const priority = (move: Move) => (move.san.includes("#") ? 4 : move.san.includes("+") ? 3 : move.captured ? 2 : 1);
-    return priority(right) - priority(left);
-  });
+function orderedMoves(board: Chess, moves: LegalMove[]): LegalMove[] {
+  const priority = new Map(moves.map((move) => {
+    const suffix = checkSuffix(board, move);
+    return [move, suffix === "#" ? 4 : suffix === "+" ? 3 : move.captured ? 2 : 1];
+  }));
+  return [...moves].sort((left, right) => priority.get(right)! - priority.get(left)!);
 }
 
 function rejected(reason: string): MaterialCertificate {
@@ -114,17 +117,20 @@ export async function certifyGain(
     }
     visited += 1;
     if (visited % YIELD_EVERY === 0) {
-      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+      await yieldToEventLoop();
       if (signal.aborted) throw abortError();
     }
 
     const gain = materialBalance(board, beneficiary) - baseline;
-    if (board.isCheckmate()) {
+    const moves = legalMoves(board);
+    const inCheck = board.isCheck();
+    if (inCheck && moves.length === 0) {
       return board.turn() === beneficiaryColor
         ? rejected("The claimed continuation allows mate against the beneficiary")
         : { kind: "mate", line: [] };
     }
-    if (board.isGameOver()) {
+    // Same as isGameOver() once checkmate is excluded: no moves here is stalemate.
+    if (moves.length === 0 || board.isDrawByFiftyMoves() || board.isInsufficientMaterial() || board.isThreefoldRepetition()) {
       return gain >= 1 ? { kind: "gain", gain, line: [] } : rejected("The terminal line has no material gain");
     }
 
@@ -138,13 +144,13 @@ export async function certifyGain(
 
     const beneficiaryTurn = board.turn() === beneficiaryColor;
     const outcomes: Array<{ move: string; outcome: SearchOutcome }> = [];
-    for (const legal of orderedMoves(board)) {
-      const uci = toUci(legal);
+    for (const legal of orderedMoves(board, moves)) {
+      const uci = legal.uci;
       const isRecapture = !beneficiaryTurn
         && lastBeneficiaryCapture !== null
         && Boolean(legal.captured)
         && legal.to === lastBeneficiaryCapture;
-      board.move(legal);
+      play(board, legal);
       const resolvesCapture = !beneficiaryTurn
         && lastBeneficiaryCapture !== null
         && (isRecapture || !board.isCheck());
@@ -152,7 +158,7 @@ export async function certifyGain(
         ? (legal.captured ? legal.to : lastBeneficiaryCapture)
         : resolvesCapture ? null : lastBeneficiaryCapture;
       const outcome = await search(depth + 1, nextCapture, resolvesCapture);
-      board.undo();
+      undo(board);
       outcomes.push({ move: uci, outcome });
 
       if (!beneficiaryTurn && outcome.kind === "rejected") break;
