@@ -23,14 +23,14 @@ The browser runner in this sandbox used `pnpm exec next build --webpack`, `pnpm 
 | Check | Observed result |
 | --- | --- |
 | `node scripts/vendor-stockfish.mjs --check` | Passed (exit 0). |
-| `pnpm test` | 50 files, 451 tests passed after the search-cache change. |
+| `pnpm test` | 51 files, 458 tests passed after the certificate-first verifier change. |
 | `pnpm typecheck` | Passed. |
 | `pnpm lint` | Passed. |
 | `pnpm exec next build --webpack` | Passed; `/assessment` prerendered. |
 | `pnpm build` | Failed in the sandbox: Google Fonts fetch; escalated retry: Turbopack CSS process port-binding panic. |
-| Non-live Playwright, production Webpack build | 25 passed, 1 opt-in performance test skipped (1.7 minutes), before the final 429 retry guard. Its targeted recovery test passed again after that guard. |
+| Non-live Playwright, production Webpack build | 25 passed, 2 opt-in tests (performance, live API) skipped (30.6 seconds), after the certificate-first verifier change. |
 | Opt-in live public API check | Passed, 1/1: browser-origin Chess.com archives and latest monthly endpoint readable. |
-| Full 50-game benchmark | Failed at 15/50 after 28.3 minutes. |
+| Full 50-game benchmark | Originally failed at 15/50 after 28.3 minutes. After the certificate-first verifier change: passed, 50/50 in 1,541.3 seconds (25.7 minutes). |
 | `git diff --check` | Passed. |
 
 ## Desktop 50-game performance result
@@ -47,10 +47,38 @@ A separate fresh Chromium page fetched each local engine asset with `cache: "no-
 
 The original timed-out 50-game result above predates a per-game cache for identical, completed Stockfish searches. Instrumentation showed that 55–61% of actual searches in three short games and one medium game repeated the same full position, perspective, node budget, and ordered root moves. The cache reuses only exact results with a fully legal principal variation and matching perspective/root; it does not change the 200,000/400,000 node budgets, tactical certificates, or analysis signature. Bounded, malformed, canceled, and failed searches are not retained.
 
-With the cache, a three-short-game Chromium run took 63.8 seconds instead of 113.4 seconds and made 219 physical searches instead of 508. One medium game took 75.6 instead of 123.8 seconds and made 166 instead of 402 searches. A 46-ply long game still took 182.6 seconds (531 physical searches; 114.0 seconds in engine searches and 68.2 seconds in verifier work). A later three-game real-Stockfish corpus run took 63.9 seconds. The full 50-game batch was **not rerun** after this optimization: the long-game measurement alone indicates that 20 similar long games would exceed the original 28.3-minute deadline. This is a projection, not a measured full-batch result. The desktop completion criterion remains open.
+With the cache, a three-short-game Chromium run took 63.8 seconds instead of 113.4 seconds and made 219 physical searches instead of 508. One medium game took 75.6 instead of 123.8 seconds and made 166 instead of 402 searches. A 46-ply long game still took 182.6 seconds (531 physical searches; 114.0 seconds in engine searches and 68.2 seconds in verifier work). A later three-game real-Stockfish corpus run took 63.9 seconds. The full 50-game batch was **not rerun** after this optimization: the long-game measurement alone indicates that 20 similar long games would exceed the original 28.3-minute deadline. This is a projection, not a measured full-batch result. It was superseded by the measured run below.
+
+### Certificate-first verifier follow-up
+
+Recorded on 2026-11-01 on the same arm64 macOS host, Playwright Chromium, production Webpack build and pinned Stockfish.js worker. Three verifier changes leave the node budgets, evidence thresholds, certificate rules and analysis signature unchanged:
+- A candidate whose best and played scores cannot support its theme's consequence is rejected before its tactic search. Each theme's support test already required that.
+- A material candidate's concrete certificate runs once, before the first tactic search. Certificates for later candidates at the same decision are prefetched on the main thread while the engine worker searches.
+- The certificate search walks chess.js 1.4.0 internal moves instead of building SAN/FEN for each visited position. Unit tests compare these helpers with the public API, and chess.js is pinned exactly.
+
+Analysis yields now use a message task instead of a clamped zero-delay timer.
+
+Both builds were measured in this session, one after the other, with the same fixture games:
+
+| Subset | Before (`5352343`) | After |
+| --- | --- | --- |
+| First three short games | 65.2 s | 21.1 s |
+| First long game (fixture index 30, 46 plies) | 187.1 s | 37.6 s |
+
+For these four games, the saved findings were compared field by field between the two builds. They were identical: 13 findings with the same themes, moves, lines, verification data and plies. The only difference was each finding's `id`, which embeds the game fingerprint, and the benchmark sets `end_time` from the run's clock. Exclusion reason counts did change. Candidates that previously ran tactic searches and failed with "not stable at both engine budgets" now fail earlier on their certificate ("Defense … refutes the claimed gain"). Exclusion counts are stored per game but are not shown in the report, so `detectorVersion` was not bumped.
+
+The full 50-game batch then **passed**: 50 of 50 games analyzed in 1,541.3 seconds (25.7 minutes) from observer start, against the 1,700,000 ms deadline. That leaves about 2.6 minutes of headroom on this host. Per-game intervals between progress checkpoints:
+
+| Group | Games | Total | Min | Mean | Max |
+| --- | --- | --- | --- | --- | --- |
+| Short (12–18 plies) | 10 | 83.2 s | 1.9 s | 8.3 s | 19.3 s |
+| Medium (26–34 plies) | 20 | 509.4 s | 14.3 s | 25.5 s | 40.4 s |
+| Long (46–54 plies) | 20 | 948.5 s | 25.5 s | 47.4 s | 65.7 s |
+
+The run produced 378 findings across 50 saved analyses. Chromium's coarse `usedJSHeapSize` peaked at 26,000,000 bytes. This is the page heap only, not a whole-browser or worker/WASM peak.
 
 ## Remaining release verification
 
-The desktop 50-game batch did not finish within the test deadline. Full-batch per-game timing and whole-browser/worker peak memory remain unavailable; these are release blockers for the measured performance criterion. The real-phone 50-game CPU/memory run remains unverified because no representative phone is connected to this workspace. Browser viewport emulation cannot establish phone processing time. The default Turbopack `pnpm build` also remains unverified in this sandbox, although the Webpack production build passed. The opt-in live Chess.com public API check passed.
+The desktop 50-game batch now completes within the test deadline on this host, but with little headroom; slower desktops may not. Whole-browser/worker peak memory remains unavailable. The real-phone 50-game CPU/memory run remains unverified because no representative phone is connected to this workspace. Browser viewport emulation cannot establish phone processing time. The default Turbopack `pnpm build` also remains unverified in this sandbox, although the Webpack production build passed. The opt-in live Chess.com public API check passed.
 
 For browser measurements, Chromium's `performance.memory.usedJSHeapSize` describes the page JavaScript heap only; it is not a whole-browser or worker/WASM peak. Main-page Resource Timing may omit worker-initiated WASM and NNUE requests. Any missing resource entry is recorded as unobserved, not zero load time or zero bytes.
